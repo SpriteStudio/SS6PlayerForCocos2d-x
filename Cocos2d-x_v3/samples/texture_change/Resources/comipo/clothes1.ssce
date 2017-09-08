@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<SpriteStudioCellMap version="1.00.01">
+	<name>clothes1</name>
+	<exportPath></exportPath>
+	<generator>SpriteStudio</generator>
+	<packed>0</packed>
+	<imagePath>clothes1.png</imagePath>
+	<pixelSize>256 256</pixelSize>
+	<overrideTexSettings>0</overrideTexSettings>
+	<wrapMode>clamp</wrapMode>
+	<filterMode>linear</filterMode>
+	<imagePathAtImport>clothes1.png</imagePathAtImport>
+	<packInfoFilePath></packInfoFilePath>
+	<texPackSettings>
+		<maxSize>4096 4096</maxSize>
+		<forcePo2>1</forcePo2>
+		<forceSquare>0</forceSquare>
+		<margin>0</margin>
+		<padding>1</padding>
+	</texPackSettings>
+	<cells>
+		<cell>
+			<name>body</name>
+			<pos>0 0</pos>
+			<size>106 95</size>
+			<pivot>0 0.00526315812021494</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>ude</name>
+			<pos>101 0</pos>
+			<size>49 56</size>
+			<pivot>-0.0918367356061935 0.303571432828903</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>sode</name>
+			<pos>151 0</pos>
+			<size>51 57</size>
+			<pivot>-0.186274513602257 0.20175439119339</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>skirt</name>
+			<pos>0 94</pos>
+			<size>128 54</size>
+			<pivot>0 0</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>asi_mae</name>
+			<pos>0 154</pos>
+			<size>36 78</size>
+			<pivot>-0.0277777779847383 0.294871807098389</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>asi_oku</name>
+			<pos>41 150</pos>
+			<size>37 83</size>
+			<pivot>-0.0945945978164673 0.283132523298264</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>tumasaki_mae</name>
+			<pos>83 152</pos>
+			<size>27 47</size>
+			<pivot>-0.129629626870155 0.202127665281296</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>sumasaki_oku</name>
+			<pos>83 199</pos>
+			<size>30 47</size>
+			<pivot>-0.200000002980232 0.329787224531174</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>te_mae</name>
+			<pos>227 168</pos>
+			<size>29 45</size>
+			<pivot>-0.155172407627106 0.100000001490116</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>te_oku</name>
+			<pos>223 213</pos>
+			<size>33 42</size>
+			<pivot>-0.106060609221458 0.214285716414452</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>tai</name>
+			<pos>196 0</pos>
+			<size>22 38</size>
+			<pivot>0.136363640427589 0.263157904148102</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+	</cells>
+</SpriteStudioCellMap>

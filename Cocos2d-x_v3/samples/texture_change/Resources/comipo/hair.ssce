@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<SpriteStudioCellMap version="1.00.01">
+	<name>hair</name>
+	<exportPath></exportPath>
+	<generator>SpriteStudio</generator>
+	<packed>0</packed>
+	<imagePath>hair.png</imagePath>
+	<pixelSize>256 256</pixelSize>
+	<overrideTexSettings>0</overrideTexSettings>
+	<wrapMode>clamp</wrapMode>
+	<filterMode>linear</filterMode>
+	<imagePathAtImport>C:/Users/koizumi.WEBTECH/Desktop/comipo/hair.png</imagePathAtImport>
+	<packInfoFilePath></packInfoFilePath>
+	<texPackSettings>
+		<maxSize>4096 4096</maxSize>
+		<forcePo2>1</forcePo2>
+		<forceSquare>0</forceSquare>
+		<margin>0</margin>
+		<padding>1</padding>
+	</texPackSettings>
+	<cells>
+		<cell>
+			<name>maegami</name>
+			<pos>0 0</pos>
+			<size>88 95</size>
+			<pivot>0.25 0.300000011920929</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>toubu</name>
+			<pos>87 0</pos>
+			<size>79 88</size>
+			<pivot>0.00632911408320069 0</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>ribon</name>
+			<pos>165 0</pos>
+			<size>91 84</size>
+			<pivot>-0.291208803653717 -0.226190477609634</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>kami1</name>
+			<pos>0 94</pos>
+			<size>45 139</size>
+			<pivot>0.0777777805924416 0.377697855234146</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>kami2</name>
+			<pos>49 96</pos>
+			<size>45 107</size>
+			<pivot>0.122222222387791 0.359813094139099</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>kami3</name>
+			<pos>97 92</pos>
+			<size>37 109</size>
+			<pivot>-0.0675675645470619 0.362385332584381</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>kami4</name>
+			<pos>139 89</pos>
+			<size>84 81</size>
+			<pivot>-0.357142865657806 0.413580238819122</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+	</cells>
+</SpriteStudioCellMap>

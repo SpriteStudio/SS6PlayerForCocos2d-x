@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<SpriteStudioCellMap version="1.00.01">
+	<name>face</name>
+	<exportPath></exportPath>
+	<generator>SpriteStudio</generator>
+	<packed>0</packed>
+	<imagePath>face.png</imagePath>
+	<pixelSize>256 256</pixelSize>
+	<overrideTexSettings>0</overrideTexSettings>
+	<wrapMode>clamp</wrapMode>
+	<filterMode>linear</filterMode>
+	<imagePathAtImport>C:/Users/koizumi.WEBTECH/Desktop/comipo/face.png</imagePathAtImport>
+	<packInfoFilePath></packInfoFilePath>
+	<texPackSettings>
+		<maxSize>4096 4096</maxSize>
+		<forcePo2>1</forcePo2>
+		<forceSquare>0</forceSquare>
+		<margin>0</margin>
+		<padding>1</padding>
+	</texPackSettings>
+	<cells>
+		<cell>
+			<name>kao</name>
+			<pos>155 144</pos>
+			<size>101 112</size>
+			<pivot>0.00495049497112632 0</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>mimi</name>
+			<pos>123 215</pos>
+			<size>30 41</size>
+			<pivot>0 0.0121951214969158</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>NewCell_2</name>
+			<pos>87 212</pos>
+			<size>31 43</size>
+			<pivot>0 0</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>me1</name>
+			<pos>0 0</pos>
+			<size>30 39</size>
+			<pivot>0 0.0128205129876733</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>me2</name>
+			<pos>34 0</pos>
+			<size>27 39</size>
+			<pivot>0.0185185186564922 0.0128205129876733</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>me3</name>
+			<pos>65 2</pos>
+			<size>28 35</size>
+			<pivot>0 0.0142857143655419</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>me4</name>
+			<pos>98 0</pos>
+			<size>35 36</size>
+			<pivot>0.0142857143655419 0</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>mayu1</name>
+			<pos>0 43</pos>
+			<size>30 17</size>
+			<pivot>0 0.0294117648154497</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>mayu2</name>
+			<pos>32 45</pos>
+			<size>27 17</size>
+			<pivot>0.0185185186564922 0.0294117648154497</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>kuti1</name>
+			<pos>0 65</pos>
+			<size>23 12</size>
+			<pivot>0.0217391308397055 0</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>kuti2</name>
+			<pos>25 63</pos>
+			<size>24 18</size>
+			<pivot>0 0</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+		<cell>
+			<name>kuti3</name>
+			<pos>51 61</pos>
+			<size>22 19</size>
+			<pivot>0 0.0263157896697521</pivot>
+			<rotated>0</rotated>
+			<orgImageName></orgImageName>
+			<posStable>0</posStable>
+		</cell>
+	</cells>
+</SpriteStudioCellMap>
