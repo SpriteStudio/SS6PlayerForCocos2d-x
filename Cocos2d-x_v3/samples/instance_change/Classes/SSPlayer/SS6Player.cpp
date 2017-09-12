@@ -326,7 +326,9 @@ protected:
 		}
 		
 		cocos2d::TextureCache* texCache = cocos2d::Director::getInstance()->getTextureCache();
+		cocos2d::CCImage::setPNGPremultipliedAlphaEnabled(false);	//ストーレートアルファで読み込む
 		cocos2d::Texture2D* tex = texCache->addImage(path);
+		cocos2d::CCImage::setPNGPremultipliedAlphaEnabled(true);	//ステータスを戻しておく
 
 		cocos2d::Texture2D::TexParams texParams;
 		switch (wrapmode)
@@ -1928,6 +1930,9 @@ void Player::allocParts(int numParts, bool useCustomShaderProgram)
 		for (auto i = partnum; i < numParts; i++)
 		{
 			CustomSprite* sprite =  CustomSprite::create();
+			sprite->setDefaultShaderProgram();
+			sprite->_parentPlayer = this;
+
 			if (globalZOrder != 0.0f)
 			{
 				sprite->setGlobalZOrder(globalZOrder);
@@ -2735,13 +2740,14 @@ void Player::setFrame(int frameNo, float dt)
 		state.effectValue_loopflag = effectValue_loopflag;
 
 		CustomSprite* sprite = static_cast<CustomSprite*>(_parts.at(partIndex));
-
+/*
 		//表示設定
 		if (opacity == 0)
 		{
 			//不透明度0の時は非表示にする
 			isVisibled = false;
 		}
+*/
 		sprite->setLocalZOrder(index);
 
 		sprite->setPosition(cocos2d::Point(x, y));
@@ -2766,29 +2772,21 @@ void Player::setFrame(int frameNo, float dt)
 					// BlendFuncの値を変更することでブレンド方法を切り替えます
 					cocos2d::BlendFunc blendFunc = sprite->getBlendFunc();
 
-					if (flags & PART_FLAG_PARTS_COLOR)
 					{
-						if (!cellRef->texture->hasPremultipliedAlpha())
+						// 通常ブレンド
+						if (partData->alphaBlendType == BLEND_MIX)
 						{
 							blendFunc.src = GL_SRC_ALPHA;
 							blendFunc.dst = GL_ONE_MINUS_SRC_ALPHA;
 						}
-						else
-						{
-							blendFunc.src = CC_BLEND_SRC;
-							blendFunc.dst = CC_BLEND_DST;
-						}
-
-						// カスタムシェーダを使用する場合
-						blendFunc.src = GL_SRC_ALPHA;
-
 						// 乗算ブレンド
 						if (partData->alphaBlendType == BLEND_MUL) {
-							blendFunc.src = GL_DST_COLOR;
-							blendFunc.dst = GL_ONE_MINUS_SRC_ALPHA;
+							blendFunc.src = GL_ZERO;
+							blendFunc.dst = GL_SRC_COLOR;
 						}
 						// 加算ブレンド
 						if (partData->alphaBlendType == BLEND_ADD) {
+							blendFunc.src = GL_SRC_ALPHA;
 							blendFunc.dst = GL_ONE;
 						}
 						// 減算ブレンド
@@ -2796,74 +2794,26 @@ void Player::setFrame(int frameNo, float dt)
 							blendFunc.src = GL_ZERO;
 							blendFunc.dst = GL_ONE_MINUS_SRC_COLOR;
 						}
-					}
-					else
-					{
-						// 通常ブレンド
-						if (partData->alphaBlendType == BLEND_MIX)
-						{
-							if (!cellRef->texture->hasPremultipliedAlpha())
-							{
-								blendFunc.src = GL_SRC_ALPHA;
-								blendFunc.dst = GL_ONE_MINUS_SRC_ALPHA;
-							}
-							else
-							{
-								blendFunc.src = GL_ONE;
-								blendFunc.dst = GL_ONE_MINUS_SRC_ALPHA;
-							}
+						// α乗算ブレンド
+						if (partData->alphaBlendType == BLEND_MULALPHA) {
+							blendFunc.src = GL_DST_COLOR;
+							blendFunc.dst = GL_ONE_MINUS_SRC_ALPHA;
 						}
-						// 加算ブレンド
-						if (partData->alphaBlendType == BLEND_ADD) {
-							if (!cellRef->texture->hasPremultipliedAlpha())
-							{
-								blendFunc.src = GL_SRC_ALPHA;
-								blendFunc.dst = GL_ONE;
-							}
-							else
-							{
-								blendFunc.src = GL_ONE;
-								blendFunc.dst = GL_ONE;
-							}
+						// スクリーン
+						if (partData->alphaBlendType == BLEND_SCREEN) {
+							blendFunc.src = GL_ONE_MINUS_DST_COLOR;
+							blendFunc.dst = GL_ONE;
 						}
-						// 乗算ブレンド
-						if (partData->alphaBlendType == BLEND_MUL) {
-							if (!cellRef->texture->hasPremultipliedAlpha())
-							{
-								blendFunc.src = GL_ZERO;
-								blendFunc.dst = GL_SRC_COLOR;
-							}
-							else
-							{
-								blendFunc.src = GL_DST_COLOR;
-								blendFunc.dst = GL_ONE_MINUS_SRC_ALPHA;
-							}
+						// 除外
+						if (partData->alphaBlendType == BLEND_EXCLUSION) {
+							blendFunc.src = GL_ONE_MINUS_DST_COLOR;
+							blendFunc.dst = GL_ONE_MINUS_SRC_COLOR;
 						}
-						// 減算ブレンド
-						if (partData->alphaBlendType == BLEND_SUB) {
-							if (!cellRef->texture->hasPremultipliedAlpha())
-							{
-								blendFunc.src = GL_ZERO;
-								blendFunc.dst = GL_ONE_MINUS_SRC_COLOR;
-							}
-							else
-							{
-								blendFunc.src = GL_ONE_MINUS_SRC_ALPHA;
-								blendFunc.dst = GL_ONE_MINUS_SRC_COLOR;
-							}
+						// 反転
+						if (partData->alphaBlendType == BLEND_INVERT) {
+							blendFunc.src = GL_ONE_MINUS_DST_COLOR;
+							blendFunc.dst = GL_ZERO;
 						}
-						/*
-						//除外
-						if (partData->alphaBlendType == BLEND_) {
-						blendFunc.src = GL_ONE_MINUS_DST_COLOR;
-						blendFunc.dst = GL_ONE_MINUS_SRC_COLOR;
-						}
-						//スクリーン
-						if (partData->alphaBlendType == BLEND_) {
-						blendFunc.src = GL_ONE_MINUS_DST_COLOR;
-						blendFunc.dst = GL_ONE;
-						}
-						*/
 					}
 
 					sprite->setBlendFunc(blendFunc);
@@ -2946,7 +2896,7 @@ void Player::setFrame(int frameNo, float dt)
 				quad.tr.vertices.y = center + (h * scale);
 			}
 		}
-		sprite->setScale(scaleX, scaleY);	//スケール設定
+		sprite->setScale(scaleX * localscaleX, scaleY * localscaleY);	//スケール設定
 
 
 		// 頂点変形のオフセット値を反映
@@ -2977,34 +2927,22 @@ void Player::setFrame(int frameNo, float dt)
 
 
 		//頂点情報の取得
-		GLubyte alpha = (GLubyte)opacity;
-		cocos2d::Color4B color4( 0xff, 0xff, 0xff, opacity);
+		GLubyte loalpha = (GLubyte)opacity;
+		if (sprite->_state.flags & PART_FLAG_LOCALOPACITY)
+		{
+			loalpha = (GLubyte)localopacity;
+		}
+		cocos2d::Color4B color4( 0xff, 0xff, 0xff, loalpha);
 
 		sprite->sethasPremultipliedAlpha(0);	//
 		if (cellRef)
 		{
 			if (cellRef->texture)
 			{
-				if (cellRef->texture->hasPremultipliedAlpha())
-				{
-					//テクスチャのカラー値にアルファがかかっている場合は、アルファ値をカラー値に反映させる
-					color4.r = color4.r * alpha * _col_r / 255 / 255;
-					color4.g = color4.g * alpha * _col_g / 255 / 255;
-					color4.b = color4.b * alpha * _col_b / 255 / 255;
-					// 加算ブレンド
-					if (partData->alphaBlendType == BLEND_ADD)
-					{
-						color4.a = 255;	//加算の場合はアルファの計算を行わない。(カラー値にアルファ分が計算されているため)
-					}
-					sprite->sethasPremultipliedAlpha(1);
-				}
-				else
-				{
-					//テクスチャのカラー値を変更する
-					color4.r = color4.r * _col_r / 255;
-					color4.g = color4.g * _col_g / 255;
-					color4.b = color4.b * _col_b / 255;
-				}
+				//テクスチャのカラー値を変更する
+				color4.r = color4.r * _col_r / 255;
+				color4.g = color4.g * _col_g / 255;
+				color4.b = color4.b * _col_b / 255;
 			}
 		}
 		quad.tl.colors =
@@ -3027,6 +2965,7 @@ void Player::setFrame(int frameNo, float dt)
 			if (cb_flags & VERTEX_FLAG_ONE)
 			{
 				reader.readColor(color4);
+				color4.a *= (loalpha / 255.0f);
 
 				quad.tl.colors =
 				quad.tr.colors =
@@ -3038,21 +2977,25 @@ void Player::setFrame(int frameNo, float dt)
 				if (cb_flags & VERTEX_FLAG_LT)
 				{
 					reader.readColor(color4);
+					color4.a *= (loalpha / 255.0f);
 					quad.tl.colors = color4;
 				}
 				if (cb_flags & VERTEX_FLAG_RT)
 				{
 					reader.readColor(color4);
+					color4.a *= (loalpha / 255.0f);
 					quad.tr.colors = color4;
 				}
 				if (cb_flags & VERTEX_FLAG_LB)
 				{
 					reader.readColor(color4);
+					color4.a *= (loalpha / 255.0f);
 					quad.bl.colors = color4;
 				}
 				if (cb_flags & VERTEX_FLAG_RB)
 				{
 					reader.readColor(color4);
+					color4.a *= (loalpha / 255.0f);
 					quad.br.colors = color4;
 				}
 			}
@@ -3211,7 +3154,7 @@ void Player::setFrame(int frameNo, float dt)
 			if (inst_scale <= 0) continue;
 			//changeInstanceAnime()でソースアニメの参照を変更した場合に尺が変わるので、超えてしまう場合がある。
 			//最大を超えた場合はメモリ外を参照してしまうのでアサートで止めておく
-			CCASSERT(inst_scale <= sprite->_ssplayer->_currentAnimeRef->animationData->endFrames, "_playingFrame It has more than the length of the InstanceAnimation");
+			CCASSERT(inst_scale <= sprite->_ssplayer->_currentAnimeRef->animationData->totalFrames, "_playingFrame It has more than the length of the InstanceAnimation");
 
 			int	nowloop = (reftime / inst_scale);	//現在までのループ数
 
@@ -3348,22 +3291,23 @@ void Player::setFrame(int frameNo, float dt)
 					cocos2d::Mat4::createScale(sx, sy, 1.0f, &t);
 					mat = mat * t;
 
-				}
-				if (num == 1)
-				{
+					if (matcnt == 0)
+					{
+						sprite->_mat = mat;
+					}
 					//ローカルスケールが使用されていない場合は継承マトリクスをローカルマトリクスに適用
 					sprite->_localmat = mat;
 				}
-				sprite->_mat = mat;
 				sprite->_isStateChanged = false;
 
 				// 行列を再計算させる
 				sprite->setAdditionalTransform(nullptr);
 				sprite->Set_transformDirty();	//Ver 3.13.1対応
+
 				//インスタンスパーツの親を設定のマトリクスを設定する
 				if (sprite->_ssplayer)
 				{
-					sprite->_ssplayer->setParentMatrix(sprite->_mat, true);	//プレイヤーに対してマトリクスを設定する
+//					sprite->_ssplayer->setParentMatrix(sprite->_mat, true);	//プレイヤーに対してマトリクスを設定する
 					//インスタンスパラメータを設定
 					if (sprite->_state.flags & PART_FLAG_LOCALOPACITY)
 					{
@@ -3671,8 +3615,9 @@ void Player::setMaskParentSetting(bool flg)
  * CustomSprite
  */
 
-CustomSprite::CustomSprite():
-	_opacity(1.0f)
+CustomSprite::CustomSprite()
+	: _defaultShaderProgram(nullptr)
+	, _opacity(1.0f)
 	, _liveFrame(0.0f)
 	, _hasPremultipliedAlpha(0)
 	, refEffect(0)
@@ -3680,7 +3625,8 @@ CustomSprite::CustomSprite():
 	, effectAttrInitialized(false)
 	, effectTimeTotal(0)
 	, _maskInfluence(true)
-{}
+{
+}
 
 CustomSprite::~CustomSprite()
 {
@@ -3698,11 +3644,18 @@ CustomSprite* CustomSprite::create()
 	if (pSprite && pSprite->init())
 	{
 		pSprite->initState();
+		pSprite->_defaultShaderProgram = pSprite->getGLProgram();
+		pSprite->_defaultShaderProgram->updateUniforms();
 		pSprite->autorelease();
 		return pSprite;
 	}
 	CC_SAFE_DELETE(pSprite);
 	return nullptr;
+}
+
+void CustomSprite::setDefaultShaderProgram( void )
+{
+	this->setGLProgram(_defaultShaderProgram);
 }
 
 void CustomSprite::sethasPremultipliedAlpha(int PremultipliedAlpha)
@@ -3739,15 +3692,343 @@ const cocos2d::Mat4& CustomSprite::getNodeToParentTransform() const
 	return _transform;
 }
 
+/**
+パーツカラー用
+ブレンドタイプに応じたテクスチャコンバイナの設定を行う
 
-int cont = 0;
+ミックスのみコンスタント値を使う。
+他は事前に頂点カラーに対してブレンド率を掛けておく事でαも含めてブレンドに対応している。
+*/
+void CustomSprite::setupPartsColorTextureCombiner(BlendType blendType, VertexFlag colorBlendTarget)
+{
+	using namespace cocos2d;
+
+	//static const float oneColor[4] = {1.f,1.f,1.f,1.f};
+	float constColor[4] = { 0.5f,0.5f,0.5f,1.0f };
+	static const GLuint funcs[] = { GL_INTERPOLATE, GL_MODULATE, GL_ADD, GL_SUBTRACT };
+	GLuint func = funcs[(int)blendType];
+	GLuint srcRGB = GL_TEXTURE0;
+	GLuint dstRGB = GL_PRIMARY_COLOR;
+
+	bool combineAlpha = true;
+
+	switch (blendType)
+	{
+	case BlendType::BLEND_MIX:
+	case BlendType::BLEND_MUL:
+	case BlendType::BLEND_ADD:
+	case BlendType::BLEND_SUB:
+		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
+		// rgb
+		glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_RGB, func);
+
+		// mix の場合、特殊
+		if (blendType == BlendType::BLEND_MIX)
+		{
+			if (colorBlendTarget == VertexFlag::VERTEX_FLAG_ONE)
+			{
+				// 全体なら、const 値で補間する
+				glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE2_RGB, GL_CONSTANT);
+				glTexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, constColor);
+			}
+			else
+			{
+				// 頂点カラーのアルファをテクスチャに対する頂点カラーの割合にする。
+				glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE2_RGB, GL_PRIMARY_COLOR);
+
+				combineAlpha = false;
+			}
+			// 強度なので 1 に近付くほど頂点カラーが濃くなるよう SOURCE0 を頂点カラーにしておく。
+			std::swap(srcRGB, dstRGB);
+		}
+		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_RGB, srcRGB);
+		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE1_RGB, dstRGB);
+		glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_RGB, GL_SRC_COLOR);
+		glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND1_RGB, GL_SRC_COLOR);
+		break;
+	case BlendType::BLEND_SCREEN:
+	case BlendType::BLEND_EXCLUSION:
+	case BlendType::BLEND_INVERT:
+	default:
+		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
+		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE1_RGB, GL_TEXTURE0);
+		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE2_RGB, GL_CONSTANT);
+		glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_RGB, GL_MODULATE);
+		break;
+	}
+
+	if (combineAlpha)
+	{
+		// alpha は常に掛け算
+		glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_ALPHA, GL_MODULATE);
+		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_ALPHA, GL_TEXTURE0);
+		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE1_ALPHA, GL_PRIMARY_COLOR);
+		glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA, GL_SRC_ALPHA);
+		glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND1_ALPHA, GL_SRC_ALPHA);
+	}
+	else
+	{
+		// ミックス＋頂点単位の場合αブレンドはできない。
+		// αはテクスチャを100%使えれば最高だが、そうはいかない。
+		glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_ALPHA, GL_REPLACE);
+		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_ALPHA, GL_TEXTURE0);
+		glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA, GL_SRC_ALPHA);
+	}
+}
+
 void CustomSprite::draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transform, uint32_t flags)
 {
 	//SSPManegerのエフェクトアップデートを設定
 	auto sspman = ss::SSPManager::getInstance();
 	sspman->setUpdateFlag();
 
-	cocos2d::Sprite::draw(renderer, transform, flags);
+	if (_texture == nullptr)
+	{
+		return;
+	}
+
+
+	bool customDraw = false;	//カスタム描画を行うか？
+	if (
+		 (_state.flags & PART_FLAG_PARTS_COLOR)
+//	  || (_state.flags & PART_FLAG_LOCALSCALE_X)
+//	  || (_state.flags & PART_FLAG_LOCALSCALE_Y)
+	  || (_partData.alphaBlendType == BLEND_SUB)
+		)
+	{
+		customDraw = true;	//独自に描画する
+	}
+
+	if (customDraw == false)
+	{
+		//本来のcocosの描画を行う
+		cocos2d::Sprite::draw(renderer, transform, flags);
+		return;
+	}
+	using namespace cocos2d;
+
+	CC_PROFILER_START_CATEGORY(kCCProfilerCategorySprite, "CustomSprite - draw");
+
+	//cocos v3系からspriteのdraw内でレンダーに描画コマンドを積む方式に変わったため、
+	//自前のシェーダーをcocos側に渡してパラメータを設定することが難しい。
+	//カラーブレンドスプライトは表示タイミングで、現在レンダーにたまっている描画コマンドを処理して
+	//描画してしまい直接描画することで描画順を保つことにした
+	renderer->render();
+
+	//	CCLOG("x: %f, y: %f", _quad.tl.vertices.x, _quad.tl.vertices.y);
+#define DRAW_DEBUG 0
+#if DRAW_DEBUG == 1
+	// draw bounding box
+	{
+		cocos2d::Point vertices[4] = {
+			cocos2d::Point(_quad.tl.vertices.x,_quad.tl.vertices.y),
+			cocos2d::Point(_quad.bl.vertices.x,_quad.bl.vertices.y),
+			cocos2d::Point(_quad.br.vertices.x,_quad.br.vertices.y),
+			cocos2d::Point(_quad.tr.vertices.x,_quad.tr.vertices.y),
+		};
+		ccDrawPoly(vertices, 4, true);
+	}
+#endif 
+#if DRAW_DEBUG == 2
+	// draw texture box
+	{
+		cocos2d::Size s = this->getTextureRect().size;
+		cocos2d::Point offsetPix = this->getOffsetPosition();
+		cocos2d::Point vertices[4] = {
+			cocos2d::Point(offsetPix.x,offsetPix.y), cocos2d::Point(offsetPix.x + s.width,offsetPix.y),
+			cocos2d::Point(offsetPix.x + s.width,offsetPix.y + s.height), cocos2d::Point(offsetPix.x,offsetPix.y + s.height)
+		};
+		ccDrawPoly(vertices, 4, true);
+	}
+#endif // CC_SPRITE_DEBUG_DRAW
+
+	{
+		//シェーダーにプロジェクションマトリクスが渡せないので頂点を移動させる。
+		cocos2d::Vec3 lsv;
+		_localmat.getScale(&lsv);
+
+		float posx = _parentPlayer->getPositionX() - (_originalContentSize.width * lsv.x / 2);
+		float posy = _parentPlayer->getPositionY() - (_originalContentSize.height * lsv.y / 2);
+		float posz = _parentPlayer->getPositionZ();
+
+		cocos2d::Mat4 mat;
+		mat = cocos2d::Mat4::IDENTITY;
+		cocos2d::Mat4::createTranslation(posx, posy, posz, &mat);
+		mat = mat * _localmat;
+		mat.transformPoint(&_quad.bl.vertices);
+
+		mat = cocos2d::Mat4::IDENTITY;
+		cocos2d::Mat4::createTranslation(posx, posy, posz, &mat);
+		mat = mat * _localmat;
+		mat.transformPoint(&_quad.br.vertices);
+
+		mat = cocos2d::Mat4::IDENTITY;
+		cocos2d::Mat4::createTranslation(posx, posy, posz, &mat);
+		mat = mat * _localmat;
+		mat.transformPoint(&_quad.tl.vertices);
+
+		mat = cocos2d::Mat4::IDENTITY;
+		cocos2d::Mat4::createTranslation(posx, posy, posz, &mat);
+		mat = mat * _localmat;
+		mat.transformPoint(&_quad.tr.vertices);
+
+	}
+
+	CC_NODE_DRAW_SETUP();
+
+	glDisableClientState(GL_COLOR_ARRAY);
+	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	glEnable(GL_BLEND);
+	glDisable(GL_DEPTH_TEST);
+	glEnable(GL_ALPHA_TEST);
+	glAlphaFunc(GL_GREATER, 0.0);
+
+	glBlendEquation(GL_FUNC_ADD);
+
+	if (_partData.alphaBlendType == BLEND_SUB)
+	{
+		//減算
+		glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
+		glBlendFuncSeparateEXT(GL_SRC_ALPHA, GL_ONE, GL_ZERO, GL_DST_ALPHA);
+//		GL::blendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);	// for test
+	}
+	else
+	{
+		GL::blendFunc(_blendFunc.src, _blendFunc.dst);
+	}
+	//パーツカラー
+	if (_state.flags & PART_FLAG_PARTS_COLOR)
+	{
+		setupPartsColorTextureCombiner((BlendType)_state.partsColorFunc, (VertexFlag)_state.partsColorType);
+	}
+	else
+	{
+		// カラーは１００％テクスチャ
+		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
+		glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_RGB, GL_REPLACE);
+		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_RGB, GL_TEXTURE0);
+		// αだけ合成
+		glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_ALPHA, GL_MODULATE);
+		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_ALPHA, GL_TEXTURE0);
+		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE1_ALPHA, GL_PRIMARY_COLOR);
+		glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA, GL_SRC_ALPHA);
+		glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND1_ALPHA, GL_SRC_ALPHA);
+	}
+
+//	GL::bindTexture2D(_texture->getName());
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, _texture->getName());
+
+	//
+	// Attributes
+	//
+
+	GL::enableVertexAttribs(GL::VERTEX_ATTRIB_FLAG_POS_COLOR_TEX);
+
+	#define kQuadSize sizeof(_quad.bl)
+	long offset = (long)&_quad;
+
+	// vertex
+	int diff = offsetof(V3F_C4B_T2F, vertices);
+	glVertexAttribPointer(GLProgram::VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, kQuadSize, (void*)(offset + diff));
+
+	// texCoods
+	diff = offsetof(V3F_C4B_T2F, texCoords);
+	glVertexAttribPointer(GLProgram::VERTEX_ATTRIB_TEX_COORD, 2, GL_FLOAT, GL_FALSE, kQuadSize, (void*)(offset + diff));
+
+	// color
+	diff = offsetof(V3F_C4B_T2F, colors);
+	glVertexAttribPointer(GLProgram::VERTEX_ATTRIB_COLOR, 4, GL_UNSIGNED_BYTE, GL_TRUE, kQuadSize, (void*)(offset + diff));
+
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	CC_INCREMENT_GL_DRAWN_BATCHES_AND_VERTICES(1, offset);
+//	CC_INCREMENT_GL_DRAWS(1);
+/*
+// オリジナルUVをまず指定する
+// 左下が 0,0 Ｚ字順
+	static const int sUvOrders[][4] = {
+		{ 0, 1, 2, 3 },	// フリップなし
+		{ 1, 0, 3, 2 },	// 水平フリップ
+		{ 2, 3, 0, 1 },	// 垂直フリップ
+		{ 3, 2, 1, 0 },	// 両方フリップ
+	};
+	// イメージのみのフリップ対応
+
+	int order = 0;
+	float	uvs[10];
+	float	vertices[3 * 5];	///< 座標
+	float	colors[4 * 4];		///< カラー (４頂点分）
+	const int * uvorder = &sUvOrders[order][0];
+	for (int i = 0; i < 4; ++i)
+	{
+		V3F_C4B_T2F val;
+		int idx = *uvorder;
+		switch( i )
+		{
+		case 0:
+			val = _quad.bl;
+			break;
+		case 1:
+			val = _quad.br;
+			break;
+		case 2:
+			val = _quad.tl;
+			break;
+		case 3:
+			val = _quad.tr;
+			break;
+		}
+		uvs[idx * 2] = val.texCoords.u;
+		uvs[idx * 2 + 1] = val.texCoords.v;
+		vertices[idx * 3] = val.vertices.x;
+		vertices[idx * 3 + 1] = val.vertices.y;
+		vertices[idx * 3 + 2] = val.vertices.z;
+		colors[idx * 4] = val.colors.r;
+		colors[idx * 4 + 1] = val.colors.g;
+		colors[idx * 4 + 2] = val.colors.b;
+		colors[idx * 4 + 3] = val.colors.a;
+
+		colors[idx * 4] = 1.0f;
+		colors[idx * 4 + 1] = 1.0f;
+		colors[idx * 4 + 2] = 1.0f;
+		colors[idx * 4 + 3] = 1.0f;
+
+		++uvorder;
+	}
+	// UV 配列を指定する
+	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+	glTexCoordPointer(2, GL_FLOAT, 0, (GLvoid *)uvs);
+
+
+	glEnableClientState(GL_COLOR_ARRAY);
+	glColorPointer(4, GL_FLOAT, 0, (GLvoid *)colors);
+
+	// 頂点バッファの設定
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, (GLvoid *)vertices);
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadMatrixf(_localmat.m);	//Ver6 ローカルスケール対応
+
+	// 頂点配列を描画
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+	glPopMatrix();
+	CC_INCREMENT_GL_DRAWS(1);
+*/
+	CHECK_GL_ERROR_DEBUG();
+
+	glDisable(GL_TEXTURE_2D);
+	glDisable(GL_ALPHA_TEST);
+
+	//ブレンドモード　減算時の設定を戻す
+	glBlendEquation(GL_FUNC_ADD);
+
+	CC_PROFILER_STOP_CATEGORY(kCCProfilerCategorySprite, "CCSprite - draw");
 
 }
 

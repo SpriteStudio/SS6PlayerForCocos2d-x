@@ -531,6 +531,10 @@ void	SsEffectRenderV2::drawSprite(
 	{
 //		memcpy(matrix, _parentSprite->partState.matrix, sizeof(float) * 16);
     	parentAlpha = _parentSprite->_state.opacity / 255.0f;
+		if(_parentSprite->_state.flags & PART_FLAG_LOCALOPACITY)
+		{
+			parentAlpha = _parentSprite->_state.localopacity / 255.0f;
+		}
 	}
 
 
@@ -572,16 +576,8 @@ void	SsEffectRenderV2::drawSprite(
 	{
 	case SsRenderBlendType::_enum::Mix:
 		//’Êí
-		if (!dispCell->refCell.texture->hasPremultipliedAlpha())
-		{
-			blendFunc.src = GL_SRC_ALPHA;
-			blendFunc.dst = GL_ONE_MINUS_SRC_ALPHA;
-		}
-		else
-		{
-			blendFunc.src = GL_ONE;
-			blendFunc.dst = GL_ONE_MINUS_SRC_ALPHA;
-		}
+		blendFunc.src = GL_SRC_ALPHA;
+		blendFunc.dst = GL_ONE_MINUS_SRC_ALPHA;
 		break;
 	case SsRenderBlendType::_enum::Add:
 		//‰ÁŽZ
