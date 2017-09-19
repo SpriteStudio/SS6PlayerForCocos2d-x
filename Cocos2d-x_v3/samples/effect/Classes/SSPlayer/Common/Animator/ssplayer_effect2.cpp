@@ -561,6 +561,7 @@ void	SsEffectRenderV2::drawSprite(
 	{
 		_parentSprite->addChild(sprite);	//子供にする
 	}
+	sprite->_parentPlayer = _parentSprite->_parentPlayer;
 	sprite->setVisible(true);			//表示
 	sprite->setPosition(cocos2d::Vec2(_position.x * layoutScale.x, _position.y * layoutScale.y));
 	sprite->setScale(_size.x, _size.y);
@@ -615,6 +616,12 @@ void	SsEffectRenderV2::drawSprite(
 	sprite->setOpacity(a);
 	cocos2d::Color3B color3(r, g, b);
 	sprite->setColor(color3);
+
+	sprite->_mat = _parentSprite->_mat;
+	sprite->_maskInfluence = _parentSprite->_maskInfluence;	//親パーツのマスク対象を設定する
+	// 行列を再計算させる
+	sprite->setAdditionalTransform(nullptr);
+	sprite->Set_transformDirty();	//Ver 3.13.1対応
 }
 
 

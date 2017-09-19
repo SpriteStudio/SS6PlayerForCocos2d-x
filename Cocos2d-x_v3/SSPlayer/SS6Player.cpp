@@ -1336,6 +1336,7 @@ void SSPManager::createEffectBuffer(int buffSize)
 			CustomSprite* sprite = CustomSprite::create();
 			sprite->_parent = nullptr;
 			sprite->setVisible(false);
+			sprite->_isEffectSprite = true;
 
 			_effectSprite.pushBack(sprite);
 		}
@@ -1444,6 +1445,7 @@ Player::Player(void)
 	, _maskFuncFlag(true)
 	, _maskParentSetting(true)
 	, _parentMatUse(false)					//プレイヤーが持つ継承されたマトリクスがあるか？
+	, _firstDraw(false)
 {
 	int i;
 	for (i = 0; i < PART_VISIBLE_MAX; i++)
@@ -1930,7 +1932,6 @@ void Player::allocParts(int numParts, bool useCustomShaderProgram)
 		for (auto i = partnum; i < numParts; i++)
 		{
 			CustomSprite* sprite =  CustomSprite::create();
-			sprite->setDefaultShaderProgram();
 			sprite->_parentPlayer = this;
 
 			if (globalZOrder != 0.0f)
@@ -2840,7 +2841,8 @@ void Player::setFrame(int frameNo, float dt)
 				isVisibled = false;
 			}
 		}
-		sprite->setVisible(isVisibled);
+//		sprite->setVisible(isVisibled);
+		sprite->setVisible(true);
 
 		sprite->setAnchorPoint(cocos2d::Point(pivotX, 1.0f - pivotY));	//cocosは下が-なので座標を反転させる
 		sprite->setFlippedX(flags & PART_FLAG_FLIP_H);
@@ -2959,8 +2961,8 @@ void Player::setFrame(int frameNo, float dt)
 			int funcNo = typeAndFlags & 0xff;
 			int cb_flags = (typeAndFlags >> 8) & 0xff;
 	
-			sprite->_state.partsColorFunc = funcNo;  
-			sprite->_state.partsColorType = cb_flags;
+			state.partsColorFunc = funcNo;  
+			state.partsColorType = cb_flags;
 
 			if (cb_flags & VERTEX_FLAG_ONE)
 			{
@@ -3201,6 +3203,25 @@ void Player::setFrame(int frameNo, float dt)
 			}
 			//インスタンス用SSPlayerに再生フレームを設定する
 			sprite->_ssplayer->setFrameNo(_time);
+
+			//インスタンスパーツの親を設定のマトリクスを設定する
+			{
+//				sprite->_ssplayer->setParentMatrix(sprite->_mat, true);	//プレイヤーに対してマトリクスを設定する
+				//インスタンスパラメータを設定
+				if (sprite->_state.flags & PART_FLAG_LOCALOPACITY)
+				{
+					sprite->_ssplayer->setAlpha(sprite->_state.localopacity);
+				}
+				else
+				{
+					sprite->_ssplayer->setAlpha(sprite->_state.opacity);
+				}
+//				sprite->_ssplayer->setPosition(x, y);
+//				sprite->_ssplayer->set_InstanceRotation(rotationX, rotationY, rotationZ);
+				sprite->_ssplayer->setContentScaleEneble(_isContentScaleFactorAuto);
+				sprite->_ssplayer->setColor(_col_r, _col_g, _col_b);
+			}
+
 		}
 
 		//スプライトステータスの保存
@@ -3303,23 +3324,6 @@ void Player::setFrame(int frameNo, float dt)
 				// 行列を再計算させる
 				sprite->setAdditionalTransform(nullptr);
 				sprite->Set_transformDirty();	//Ver 3.13.1対応
-
-				//インスタンスパーツの親を設定のマトリクスを設定する
-				if (sprite->_ssplayer)
-				{
-//					sprite->_ssplayer->setParentMatrix(sprite->_mat, true);	//プレイヤーに対してマトリクスを設定する
-					//インスタンスパラメータを設定
-					if (sprite->_state.flags & PART_FLAG_LOCALOPACITY)
-					{
-						sprite->_ssplayer->setAlpha(sprite->_state.localopacity);
-					}
-					else
-					{
-						sprite->_ssplayer->setAlpha(sprite->_state.opacity);
-					}
-					sprite->_ssplayer->setContentScaleEneble(_isContentScaleFactorAuto);
-					sprite->_ssplayer->setColor(_col_r, _col_g, _col_b);
-				}
 			}
 		}
 	}
@@ -3424,7 +3428,7 @@ void Player::setFrame(int frameNo, float dt)
 		}
 	}
 	_isPlayFirstUpdate = false;
-
+	_firstDraw = true;
 
 	_prevDrawFrameNo = frameNo;	//再生したフレームを保存
 
@@ -3614,6 +3618,14 @@ void Player::setMaskParentSetting(bool flg)
 /**
  * CustomSprite
  */
+void execMask(CustomSprite* sprite);
+void clearMask();
+void enableMask(bool flag);
+void renderSetup();
+void maskEnd(CustomSprite* sprite);
+
+static const GLchar * ssPositionTextureColor_frag =
+#include "ssShader_frag.h"
 
 CustomSprite::CustomSprite()
 	: _defaultShaderProgram(nullptr)
@@ -3625,6 +3637,9 @@ CustomSprite::CustomSprite()
 	, effectAttrInitialized(false)
 	, effectTimeTotal(0)
 	, _maskInfluence(true)
+	, _parentPlayer(nullptr)
+	, _isEffectSprite(false)
+
 {
 }
 
@@ -3644,8 +3659,7 @@ CustomSprite* CustomSprite::create()
 	if (pSprite && pSprite->init())
 	{
 		pSprite->initState();
-		pSprite->_defaultShaderProgram = pSprite->getGLProgram();
-		pSprite->_defaultShaderProgram->updateUniforms();
+		pSprite->setDefaultShaderProgram();
 		pSprite->autorelease();
 		return pSprite;
 	}
@@ -3653,9 +3667,48 @@ CustomSprite* CustomSprite::create()
 	return nullptr;
 }
 
+cocos2d::GLProgram* CustomSprite::getCustomShaderProgram()
+{
+	using namespace cocos2d;
+
+	static GLProgram* p = nullptr;
+	static bool constructFailed = false;
+	if (!p && !constructFailed)
+	{
+		p = new GLProgram();
+		p->initWithByteArrays(
+			ccPositionTextureColor_vert,
+			ssPositionTextureColor_frag);
+		p->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_POSITION, GLProgram::VERTEX_ATTRIB_POSITION);
+		p->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_COLOR, GLProgram::VERTEX_ATTRIB_COLOR);
+		p->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_TEX_COORD, GLProgram::VERTEX_ATTRIB_TEX_COORDS);
+
+		if (!p->link())
+		{
+			constructFailed = true;
+			return nullptr;
+		}
+
+		p->updateUniforms();
+
+	}
+	return p;
+}
+
 void CustomSprite::setDefaultShaderProgram( void )
 {
-	this->setGLProgram(_defaultShaderProgram);
+	_defaultShaderProgram = getGLProgram();
+	cocos2d::GLProgram *shaderProgram = getCustomShaderProgram();
+	if (shaderProgram == nullptr)
+	{
+		// Not use custom shader.
+		shaderProgram = _defaultShaderProgram;
+	}
+	_customShaderProgram = shaderProgram;
+	this->setGLProgram(_customShaderProgram);
+
+//	_defaultShaderProgram = getGLProgram();
+//	this->setGLProgram(_defaultShaderProgram);
 }
 
 void CustomSprite::sethasPremultipliedAlpha(int PremultipliedAlpha)
@@ -3691,6 +3744,7 @@ const cocos2d::Mat4& CustomSprite::getNodeToParentTransform() const
 	}
 	return _transform;
 }
+
 
 /**
 パーツカラー用
@@ -3776,36 +3830,73 @@ void CustomSprite::setupPartsColorTextureCombiner(BlendType blendType, VertexFla
 	}
 }
 
+
 void CustomSprite::draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transform, uint32_t flags)
 {
+	using namespace cocos2d;
+
 	//SSPManegerのエフェクトアップデートを設定
 	auto sspman = ss::SSPManager::getInstance();
 	sspman->setUpdateFlag();
 
-	if (_texture == nullptr)
+	if (_parentPlayer == nullptr)
 	{
+		return;
+	}
+
+	if (_parentPlayer->_firstDraw == true)
+	{
+		//マスク処理
+		if (_parentPlayer->_maskFuncFlag == true) //マスク機能が有効（インスタンスのソースアニメではない）
+		{
+			if (_parentPlayer->_maskIndexList.size() > 0)
+			{
+				renderer->render();
+				renderSetup();
+
+				//初期に適用されているマスクを精製
+				for (size_t i = 0; i < _parentPlayer->_maskIndexList.size(); i++)
+				{
+					CustomSprite* sprite = _parentPlayer->_maskIndexList[i];
+
+					//ステンシルバッファの作成
+					drawPart(sprite);
+				}
+			}
+		}
+		_parentPlayer->_mask_index = 0;	//マスクの処理数を初期化
+	}
+	_parentPlayer->_firstDraw = false;
+
+
+	if ( ( _texture == nullptr ) || ( _state.isVisibled == false ) )
+	{
+		glBindTexture(GL_TEXTURE_2D,0);
+		maskEnd(this);
 		return;
 	}
 
 
 	bool customDraw = false;	//カスタム描画を行うか？
 	if (
-		 (_state.flags & PART_FLAG_PARTS_COLOR)
-//	  || (_state.flags & PART_FLAG_LOCALSCALE_X)
-//	  || (_state.flags & PART_FLAG_LOCALSCALE_Y)
+		 ( (_state.flags & PART_FLAG_PARTS_COLOR) && ( _state.partsColorFunc != BlendType::BLEND_MUL ) )
 	  || (_partData.alphaBlendType == BLEND_SUB)
+	  || (_partData.type == PARTTYPE_MASK)
 		)
 	{
 		customDraw = true;	//独自に描画する
 	}
-
+	if (_parentPlayer->_maskIndexList.size() > 0)
+	{
+		customDraw = true;	//独自に描画する マスクは必ず自前描画
+	}
 	if (customDraw == false)
 	{
 		//本来のcocosの描画を行う
 		cocos2d::Sprite::draw(renderer, transform, flags);
+		maskEnd(this);
 		return;
 	}
-	using namespace cocos2d;
 
 	CC_PROFILER_START_CATEGORY(kCCProfilerCategorySprite, "CustomSprite - draw");
 
@@ -3815,67 +3906,49 @@ void CustomSprite::draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transf
 	//描画してしまい直接描画することで描画順を保つことにした
 	renderer->render();
 
-	//	CCLOG("x: %f, y: %f", _quad.tl.vertices.x, _quad.tl.vertices.y);
-#define DRAW_DEBUG 0
-#if DRAW_DEBUG == 1
-	// draw bounding box
+	renderSetup();
+
+	if (_partData.type == PARTTYPE_MASK)
 	{
-		cocos2d::Point vertices[4] = {
-			cocos2d::Point(_quad.tl.vertices.x,_quad.tl.vertices.y),
-			cocos2d::Point(_quad.bl.vertices.x,_quad.bl.vertices.y),
-			cocos2d::Point(_quad.br.vertices.x,_quad.br.vertices.y),
-			cocos2d::Point(_quad.tr.vertices.x,_quad.tr.vertices.y),
-		};
-		ccDrawPoly(vertices, 4, true);
+		if (_parentPlayer->_maskFuncFlag == true) //マスク機能が有効（インスタンスのソースアニメではない）
+		{
+			clearMask();
+			_parentPlayer->_mask_index++;	//0番は処理しないので先にインクメントする
+
+			for (size_t i = _parentPlayer->_mask_index; i < _parentPlayer->_maskIndexList.size(); i++)
+			{
+				CustomSprite* sprite2 = _parentPlayer->_maskIndexList[i];
+				if (sprite2->_state.isVisibled == true)
+				{
+					drawPart(sprite2);
+				}
+			}
+		}
 	}
-#endif 
-#if DRAW_DEBUG == 2
-	// draw texture box
+	else
 	{
-		cocos2d::Size s = this->getTextureRect().size;
-		cocos2d::Point offsetPix = this->getOffsetPosition();
-		cocos2d::Point vertices[4] = {
-			cocos2d::Point(offsetPix.x,offsetPix.y), cocos2d::Point(offsetPix.x + s.width,offsetPix.y),
-			cocos2d::Point(offsetPix.x + s.width,offsetPix.y + s.height), cocos2d::Point(offsetPix.x,offsetPix.y + s.height)
-		};
-		ccDrawPoly(vertices, 4, true);
+		drawPart(this);
 	}
-#endif // CC_SPRITE_DEBUG_DRAW
+	maskEnd(this);
+//	glFlush();
 
+	CC_PROFILER_STOP_CATEGORY(kCCProfilerCategorySprite, "CCSprite - draw");
+
+}
+
+void maskEnd(CustomSprite* sprite)
+{
+	if (sprite->_partData.index == sprite->_parentPlayer->_parts.size() - 1)
 	{
-		//シェーダーにプロジェクションマトリクスが渡せないので頂点を移動させる。
-		cocos2d::Vec3 lsv;
-		_localmat.getScale(&lsv);
-
-		float posx = _parentPlayer->getPositionX() - (_originalContentSize.width * lsv.x / 2);
-		float posy = _parentPlayer->getPositionY() - (_originalContentSize.height * lsv.y / 2);
-		float posz = _parentPlayer->getPositionZ();
-
-		cocos2d::Mat4 mat;
-		mat = cocos2d::Mat4::IDENTITY;
-		cocos2d::Mat4::createTranslation(posx, posy, posz, &mat);
-		mat = mat * _localmat;
-		mat.transformPoint(&_quad.bl.vertices);
-
-		mat = cocos2d::Mat4::IDENTITY;
-		cocos2d::Mat4::createTranslation(posx, posy, posz, &mat);
-		mat = mat * _localmat;
-		mat.transformPoint(&_quad.br.vertices);
-
-		mat = cocos2d::Mat4::IDENTITY;
-		cocos2d::Mat4::createTranslation(posx, posy, posz, &mat);
-		mat = mat * _localmat;
-		mat.transformPoint(&_quad.tl.vertices);
-
-		mat = cocos2d::Mat4::IDENTITY;
-		cocos2d::Mat4::createTranslation(posx, posy, posz, &mat);
-		mat = mat * _localmat;
-		mat.transformPoint(&_quad.tr.vertices);
-
+		if (sprite->_isEffectSprite == false)
+		{
+			enableMask(false);
+		}
 	}
+}
 
-	CC_NODE_DRAW_SETUP();
-
+void renderSetup()
+{
 	glDisableClientState(GL_COLOR_ARRAY);
 	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
@@ -3889,7 +3962,168 @@ void CustomSprite::draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transf
 
 	glBlendEquation(GL_FUNC_ADD);
 
-	if (_partData.alphaBlendType == BLEND_SUB)
+	//	glMatrixMode(GL_MODELVIEW);
+	//	glLoadIdentity();
+
+}
+
+void clearMask()
+{
+
+	glClear(GL_STENCIL_BUFFER_BIT);
+
+	enableMask(false);
+}
+
+void enableMask(bool flag)
+{
+
+	if (flag)
+	{
+		glEnable(GL_STENCIL_TEST);
+	}
+	else {
+		glDisable(GL_STENCIL_TEST);
+		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+	}
+}
+
+void execMask(CustomSprite* sprite)
+{
+
+	glEnable(GL_STENCIL_TEST);
+	if (sprite->_partData.type == PARTTYPE_MASK)
+	{
+		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+		if (!(sprite->_maskInfluence)) { //マスクが有効では無い＝重ね合わせる
+
+			glStencilFunc(GL_ALWAYS, 1, ~0);  //常に通過
+			glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+			//描画部分を1へ
+		}
+		else {
+			glStencilFunc(GL_ALWAYS, 1, ~0);  //常に通過
+			glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
+		}
+
+
+		glEnable(GL_ALPHA_TEST);
+
+		//この設定だと
+		//1.0fでは必ず抜けないため非表示フラグなし（＝1.0f)のときの挙動は考えたほうがいい
+
+		//不透明度からマスク閾値へ変更
+		float mask_alpha = (float)(255 - sprite->_state.masklimen) / 255.0f;
+		glAlphaFunc(GL_GREATER, mask_alpha);
+		sprite->_state.opacity = 1.0f;
+	}
+	else 
+	{
+		if ((sprite->_maskInfluence)) //パーツに対してのマスクが有効か否か
+		{
+			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+			glStencilFunc(GL_NOTEQUAL, 0x1, 0x1);  //1と等しい
+			glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+		}
+		else {
+			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+			glDisable(GL_STENCIL_TEST);
+		}
+
+		// 常に無効
+		glDisable(GL_ALPHA_TEST);
+
+	}
+
+}
+
+void CustomSprite::drawPart(CustomSprite* sprite)
+{
+	if (_texture == nullptr)
+	{
+		return;
+	}
+
+	using namespace cocos2d;
+
+	//	CCLOG("x: %f, y: %f", _quad.tl.vertices.x, _quad.tl.vertices.y);
+#define DRAW_DEBUG 0
+#if DRAW_DEBUG == 1
+	// draw bounding box
+	{
+		cocos2d::Point vertices[4] = {
+			cocos2d::Point(sprite->_quad.tl.vertices.x,sprite->_quad.tl.vertices.y),
+			cocos2d::Point(sprite->_quad.bl.vertices.x,sprite->_quad.bl.vertices.y),
+			cocos2d::Point(sprite->_quad.br.vertices.x,sprite->_quad.br.vertices.y),
+			cocos2d::Point(sprite->_quad.tr.vertices.x,sprite->_quad.tr.vertices.y),
+		};
+		ccDrawPoly(vertices, 4, true);
+	}
+#endif 
+#if DRAW_DEBUG == 2
+	// draw texture box
+	{
+		cocos2d::Size s = sprite->getTextureRect().size;
+		cocos2d::Point offsetPix = sprite->getOffsetPosition();
+		cocos2d::Point vertices[4] = {
+			cocos2d::Point(offsetPix.x,offsetPix.y), cocos2d::Point(offsetPix.x + s.width,offsetPix.y),
+			cocos2d::Point(offsetPix.x + s.width,offsetPix.y + s.height), cocos2d::Point(offsetPix.x,offsetPix.y + s.height)
+		};
+		ccDrawPoly(vertices, 4, true);
+	}
+#endif // CC_SPRITE_DEBUG_DRAW
+
+
+	if (sprite->_partData.type == PARTTYPE_MASK)
+	{
+		sprite->setGLProgram(sprite->_defaultShaderProgram);
+
+		//defaultシェーダーだとSpriteのマトリクスが適用されない
+		//シェーダーにプロジェクションマトリクスが渡せないので頂点を移動させる。
+		cocos2d::Vec3 lsv;
+		sprite->_localmat.getScale(&lsv);
+
+		float posx = sprite->_parentPlayer->getPositionX() - (sprite->_originalContentSize.width * lsv.x * sprite->_state.pivotX);
+		float posy = sprite->_parentPlayer->getPositionY() - (sprite->_originalContentSize.height * lsv.y * sprite->_state.pivotY);
+		float posz = sprite->_parentPlayer->getPositionZ();
+
+		cocos2d::Mat4 mat;
+		mat = cocos2d::Mat4::IDENTITY;
+		cocos2d::Mat4::createTranslation(posx, posy, posz, &mat);
+		mat = mat * sprite->_localmat;
+		mat.transformPoint(&sprite->_quad.bl.vertices);
+
+		mat = cocos2d::Mat4::IDENTITY;
+		cocos2d::Mat4::createTranslation(posx, posy, posz, &mat);
+		mat = mat * sprite->_localmat;
+		mat.transformPoint(&sprite->_quad.br.vertices);
+
+		mat = cocos2d::Mat4::IDENTITY;
+		cocos2d::Mat4::createTranslation(posx, posy, posz, &mat);
+		mat = mat * sprite->_localmat;
+		mat.transformPoint(&sprite->_quad.tl.vertices);
+
+		mat = cocos2d::Mat4::IDENTITY;
+		cocos2d::Mat4::createTranslation(posx, posy, posz, &mat);
+		mat = mat * sprite->_localmat;
+		mat.transformPoint(&sprite->_quad.tr.vertices);
+
+	}
+	else
+	{
+		sprite->setGLProgram(sprite->_customShaderProgram);
+	}
+
+	CC_NODE_DRAW_SETUP();
+
+	execMask(sprite);
+
+	//	GL::bindTexture2D(_texture->getName());
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, sprite->_texture->getName());
+
+	if (sprite->_partData.alphaBlendType == BLEND_SUB)
 	{
 		//減算
 		glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
@@ -3898,12 +4132,19 @@ void CustomSprite::draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transf
 	}
 	else
 	{
-		GL::blendFunc(_blendFunc.src, _blendFunc.dst);
+		GL::blendFunc(sprite->_blendFunc.src, sprite->_blendFunc.dst);
 	}
 	//パーツカラー
-	if (_state.flags & PART_FLAG_PARTS_COLOR)
+	if (sprite->_state.flags & PART_FLAG_PARTS_COLOR)
 	{
-		setupPartsColorTextureCombiner((BlendType)_state.partsColorFunc, (VertexFlag)_state.partsColorType);
+		glActiveTexture(GL_TEXTURE0);
+		setupPartsColorTextureCombiner((BlendType)sprite->_state.partsColorFunc, (VertexFlag)sprite->_state.partsColorType);
+/*
+		glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_COMBINE);
+		glTexEnvi(GL_TEXTURE_ENV,GL_COMBINE_RGB,GL_ADD);
+		glTexEnvi(GL_TEXTURE_ENV,GL_SRC0_RGB,GL_PREVIOUS); 
+		glTexEnvi(GL_TEXTURE_ENV,GL_SRC1_RGB,GL_TEXTURE);
+*/
 	}
 	else
 	{
@@ -3919,18 +4160,14 @@ void CustomSprite::draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transf
 		glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND1_ALPHA, GL_SRC_ALPHA);
 	}
 
-//	GL::bindTexture2D(_texture->getName());
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, _texture->getName());
-
 	//
 	// Attributes
 	//
 
 	GL::enableVertexAttribs(GL::VERTEX_ATTRIB_FLAG_POS_COLOR_TEX);
 
-	#define kQuadSize sizeof(_quad.bl)
-	long offset = (long)&_quad;
+#define kQuadSize sizeof(sprite->_quad.bl)
+	long offset = (long)&sprite->_quad;
 
 	// vertex
 	int diff = offsetof(V3F_C4B_T2F, vertices);
@@ -3946,90 +4183,15 @@ void CustomSprite::draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transf
 
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	CC_INCREMENT_GL_DRAWN_BATCHES_AND_VERTICES(1, offset);
-//	CC_INCREMENT_GL_DRAWS(1);
-/*
-// オリジナルUVをまず指定する
-// 左下が 0,0 Ｚ字順
-	static const int sUvOrders[][4] = {
-		{ 0, 1, 2, 3 },	// フリップなし
-		{ 1, 0, 3, 2 },	// 水平フリップ
-		{ 2, 3, 0, 1 },	// 垂直フリップ
-		{ 3, 2, 1, 0 },	// 両方フリップ
-	};
-	// イメージのみのフリップ対応
+	//	CC_INCREMENT_GL_DRAWS(1);
 
-	int order = 0;
-	float	uvs[10];
-	float	vertices[3 * 5];	///< 座標
-	float	colors[4 * 4];		///< カラー (４頂点分）
-	const int * uvorder = &sUvOrders[order][0];
-	for (int i = 0; i < 4; ++i)
-	{
-		V3F_C4B_T2F val;
-		int idx = *uvorder;
-		switch( i )
-		{
-		case 0:
-			val = _quad.bl;
-			break;
-		case 1:
-			val = _quad.br;
-			break;
-		case 2:
-			val = _quad.tl;
-			break;
-		case 3:
-			val = _quad.tr;
-			break;
-		}
-		uvs[idx * 2] = val.texCoords.u;
-		uvs[idx * 2 + 1] = val.texCoords.v;
-		vertices[idx * 3] = val.vertices.x;
-		vertices[idx * 3 + 1] = val.vertices.y;
-		vertices[idx * 3 + 2] = val.vertices.z;
-		colors[idx * 4] = val.colors.r;
-		colors[idx * 4 + 1] = val.colors.g;
-		colors[idx * 4 + 2] = val.colors.b;
-		colors[idx * 4 + 3] = val.colors.a;
-
-		colors[idx * 4] = 1.0f;
-		colors[idx * 4 + 1] = 1.0f;
-		colors[idx * 4 + 2] = 1.0f;
-		colors[idx * 4 + 3] = 1.0f;
-
-		++uvorder;
-	}
-	// UV 配列を指定する
-	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-	glTexCoordPointer(2, GL_FLOAT, 0, (GLvoid *)uvs);
-
-
-	glEnableClientState(GL_COLOR_ARRAY);
-	glColorPointer(4, GL_FLOAT, 0, (GLvoid *)colors);
-
-	// 頂点バッファの設定
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(3, GL_FLOAT, 0, (GLvoid *)vertices);
-
-	glMatrixMode(GL_MODELVIEW);
-	glLoadMatrixf(_localmat.m);	//Ver6 ローカルスケール対応
-
-	// 頂点配列を描画
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-	glPopMatrix();
-	CC_INCREMENT_GL_DRAWS(1);
-*/
 	CHECK_GL_ERROR_DEBUG();
 
 	glDisable(GL_TEXTURE_2D);
 	glDisable(GL_ALPHA_TEST);
-
 	//ブレンドモード　減算時の設定を戻す
 	glBlendEquation(GL_FUNC_ADD);
-
-	CC_PROFILER_STOP_CATEGORY(kCCProfilerCategorySprite, "CCSprite - draw");
-
+	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 }
 
 /**

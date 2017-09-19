@@ -260,22 +260,22 @@ struct PartData
 	ss_s16		type;				// パーツ種別
 	ss_s16		boundsType;			// 当たり判定種類
 	ss_s16		alphaBlendType;		// BlendType
+	ss_s16		dummy1;				//ダミーデータ
 	ss_offset	refname;			// const char*　インスタンスとして配置されるアニメーション名
 	ss_offset	effectfilename;		// const char*　参照するエフェクトファイル名
 	ss_offset	colorLabel;			// const char*	カラーラベル
-	ss_s16		boneLength;			// ボーンの長さ
 	float		bonePositionX;		// ボーンの位置
 	float		bonePositionY;		// ボーンの位置
 	float		boneRotation;		// ボーンの角度
 	float		weightPositionX;	// ウェイトの位置
 	float		weightPositionY;	// ウェイトの位置
 	float		weightImpact;		// ウェイトの影響度
+	ss_s16		boneLength;			// ボーンの長さ
 	ss_s16		meshWeightType;		// ウェイトの種類
 	ss_s16		meshWeightStrong;	// ウェイトの影響度
 	ss_s16		IKDepth;			// IK深度
 	ss_s16		IKRotationArrow;	// 回転方向
 	ss_s16		maskInfluence;		// マスク対象
-	ss_s16		dummy;				//ダミーデータ
 };
 
 

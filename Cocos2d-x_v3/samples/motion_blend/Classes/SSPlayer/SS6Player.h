@@ -360,9 +360,10 @@ class CustomSprite : public cocos2d::Sprite
 {
 private:
 	void setupPartsColorTextureCombiner(BlendType blendType, VertexFlag colorBlendTarget);
+	void drawPart(CustomSprite* sprite);
+	cocos2d::GLProgram* getCustomShaderProgram();
 
 private:
-	cocos2d::GLProgram*	_defaultShaderProgram;
 	float				_opacity;
 	int					_hasPremultipliedAlpha;
 public:
@@ -388,7 +389,10 @@ public:
 	//エフェクト制御用ワーク
 	bool effectAttrInitialized;
 	float effectTimeTotal;
+	bool _isEffectSprite;
 
+	cocos2d::GLProgram*	_defaultShaderProgram;
+	cocos2d::GLProgram*	_customShaderProgram;
 public:
 	CustomSprite();
 	virtual ~CustomSprite();
@@ -1293,6 +1297,12 @@ public:
 	virtual void update(float dt);
 	virtual void setGlobalZOrder(float globalZOrder);
 
+	bool				_firstDraw;				//最初の描画フラグ
+	bool				_maskFuncFlag;			//マスク機能を有効にするか？（インスタンスのソースアニメはマスクが無効になる）
+	int					_mask_index;			//マスクの処理数
+	std::vector<CustomSprite *> _maskIndexList;	//マスク対象となるパーツ
+	cocos2d::Vector<cocos2d::Sprite*>	_parts;
+
 protected:
 	void allocParts(int numParts, bool useCustomShaderProgram);
 	void releaseParts();
@@ -1315,7 +1325,6 @@ protected:
 	std::string			_currentdataKey;
 	std::string			_currentAnimename;
 	AnimeRef*			_currentAnimeRef;
-	cocos2d::Vector<cocos2d::Sprite*>	_parts;
 
 	SSPManager*			_sspman;
 
@@ -1355,12 +1364,9 @@ protected:
 	int					_endFrameOverWrite;		//終了フレームの上書き設定
 	int					_seedOffset;			//エフェクトシードオフセット
 
-	cocos2d::Mat4		_parentMat;					//プレイヤーが持つ継承されたマトリクス
-	bool				_parentMatUse;					//プレイヤーが持つ継承されたマトリクスがあるか？
+	cocos2d::Mat4		_parentMat;				//プレイヤーが持つ継承されたマトリクス
+	bool				_parentMatUse;			//プレイヤーが持つ継承されたマトリクスがあるか？
 	bool				_maskParentSetting;		//親パーツのマスク対象（インスタンスのみ使用する）
-	bool				_maskFuncFlag;			//マスク機能を有効にするか？（インスタンスのソースアニメはマスクが無効になる）
-	
-	std::vector<CustomSprite *> _maskIndexList;	//マスク対象となるパーツ
 
 	UserDataCallback	_userDataCallback;
 	UserData			_userData;
