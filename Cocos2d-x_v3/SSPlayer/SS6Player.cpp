@@ -1,14 +1,84 @@
-﻿//
+﻿// 
 //  SS5Player.cpp
 //
-
 #include "SS6Player.h"
 #include "SS6PlayerData.h"
-#include <string>
+#include "SS6PlayerTypes.h"
+#include "common/Animator/ssplayer_matrix.h"
 
 
 namespace ss
 {
+
+/**
+* SSPlayerControl
+Cocos2d-xからSSPlayerを使用するためのラッパークラス
+*/
+SSPlayerControl::SSPlayerControl()
+{
+	_ssp = nullptr;
+}
+SSPlayerControl::~SSPlayerControl()
+{
+	if (_ssp)
+	{
+		delete (_ssp);
+	}
+}
+
+SSPlayerControl* SSPlayerControl::create(ResourceManager* resman)
+{
+	SSPlayerControl* obj = new SSPlayerControl();
+	if (obj && obj->init())
+	{
+		obj->getSSPInstance()->setResourceManager(resman);
+		obj->autorelease();
+		obj->scheduleUpdate();
+		return obj;
+	}
+	CC_SAFE_DELETE(obj);
+	return nullptr;
+}
+Player* SSPlayerControl::getSSPInstance()
+{
+	if (_ssp == nullptr)
+	{
+		_ssp = Player::create();
+	}
+	return _ssp;
+}
+
+//sprite のオーバーライド
+bool SSPlayerControl::init()
+{
+	if (!cocos2d::Sprite::init())
+	{
+		return false;
+	}
+	return true;
+}
+void SSPlayerControl::update(float dt)
+{
+	_ssp->update(dt);
+}
+
+void SSPlayerControl::onDraw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transform, uint32_t flags)
+{
+	this->getGLProgram()->use();
+	_ssp->draw();
+}
+
+void SSPlayerControl::draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transform, uint32_t flags)
+{
+	_customCommand.init(_globalZOrder, transform, flags);
+	_customCommand.func = CC_CALLBACK_0(SSPlayerControl::onDraw, this, renderer, transform, flags);
+	renderer->addCommand(&_customCommand);
+}
+//sprite のオーバーライドここまで
+
+
+
+
 
 /**
  * definition
@@ -17,10 +87,10 @@ namespace ss
 static const ss_u32 DATA_ID = 0x42505353;
 static const ss_u32 DATA_VERSION = 5;
 
+
 /**
  * utilites
  */
-
 static void splitPath(std::string& directoty, std::string& filename, const std::string& path)
 {
     std::string f = path;
@@ -39,6 +109,51 @@ static void splitPath(std::string& directoty, std::string& filename, const std::
 	filename = f;
 }
 
+// printf 形式のフォーマット
+#ifndef va_copy
+#    define va_copy(dest, src) ((dest) = (src))
+#endif
+static std::string Format(const char* format, ...){
+
+	static std::vector<char> tmp(1000);
+
+	va_list args, source;
+	va_start(args, format);
+	va_copy( source , args );
+
+	while (1)
+	{
+		va_copy( args , source );
+		//Windows
+		if (_vsnprintf(&tmp[0], tmp.size(), format, args) == -1)
+		{
+			tmp.resize(tmp.size() * 2);
+		}
+		else
+		{
+			break;
+		}
+	}
+	tmp.push_back('\0');
+	std::string ret = &(tmp[0]);
+	va_end(args);
+	return ret;
+}
+
+//座標回転処理
+//指定した座標を中心に回転後した座標を取得します
+void get_uv_rotation(float *u, float *v, float cu, float cv, float deg)
+{
+	float dx = *u - cu; // 中心からの距離(X)
+	float dy = *v - cv; // 中心からの距離(Y)
+
+	float tmpX = (dx * cosf(SSRadianToDegree(deg))) - (dy * sinf(SSRadianToDegree(deg))); // 回転
+	float tmpY = (dx * sinf(SSRadianToDegree(deg))) + (dy * cosf(SSRadianToDegree(deg)));
+
+	*u = (cu + tmpX); // 元の座標にオフセットする
+	*v = (cv + tmpY);
+
+}
 
 //乱数シードに利用するユニークIDを作成します。
 //この値は全てのSS5プレイヤー共通で使用します
@@ -109,13 +224,13 @@ public:
 		return c.f;
 	}
 	
-	void readColor(cocos2d::Color4B& color)
+	void readColor(SSColor4B& color)
 	{
 		unsigned int raw = readU32();
-		color.a = static_cast<GLubyte>(raw >> 24);
-		color.r = static_cast<GLubyte>(raw >> 16);
-		color.g = static_cast<GLubyte>(raw >> 8);
-		color.b = static_cast<GLubyte>(raw);
+		color.a = static_cast<unsigned char>(raw >> 24);
+		color.r = static_cast<unsigned char>(raw >> 16);
+		color.g = static_cast<unsigned char>(raw >> 8);
+		color.b = static_cast<unsigned char>(raw);
 	}
 	
 	ss_offset readOffset()
@@ -134,8 +249,8 @@ private:
 struct CellRef
 {
 	const Cell* cell;
-	cocos2d::Texture2D* texture;
-	cocos2d::Rect rect;
+	TextuerData texture;
+	SSRect rect;
 	std::string texname;
 };
 
@@ -146,7 +261,6 @@ struct CellRef
 class CellCache
 {
 public:
-
 	CellCache()
 	{
 	}
@@ -161,7 +275,6 @@ public:
 		if (obj)
 		{
 			obj->init(data, imageBaseDir);
-//			obj->autorelease();
 		}
 		return obj;
 	}
@@ -170,15 +283,15 @@ public:
 	{
 		if (index < 0 || index >= (int)_refs.size())
 		{
-			CCLOGERROR("Index out of range > %d", index);
-			CC_ASSERT(0);
+			SSLOGERROR("Index out of range > %d", index);
+			SS_ASSERT(0);
 		}
 		CellRef* ref = _refs.at(index);
 		return ref;
 	}
 
 	//指定した名前のセルの参照テクスチャを変更する
-	bool setCellRefTexture(const ProjectData* data, const char* cellName, cocos2d::Texture2D* texture)
+	bool setCellRefTexture(const ProjectData* data, const char* cellName, long texture)
 	{
 		bool rc = false;
 
@@ -195,12 +308,12 @@ public:
 			if (strcmp(cellName, name) == 0)
 			{
 				CellRef* ref = getReference(i);
-				ref->texture = texture;
+				ref->texture.handle = texture;
 				rc = true;
 			}
 		}
 
-		return( rc );
+		return(rc);
 	}
 
 	//指定したデータのテクスチャを破棄する
@@ -216,11 +329,10 @@ public:
 			const CellMap* cellMap = static_cast<const CellMap*>(ptr(cell->cellMap));
 			{
 				CellRef* ref = _refs.at(i);
-				if (ref->texture)
+				if (ref->texture.handle != -1 )
 				{
-					cocos2d::TextureCache* texCache = cocos2d::Director::getInstance()->getTextureCache();
-					texCache->removeTexture(ref->texture);
-					ref->texture = nullptr;
+					SSTextureRelese(ref->texture.handle);
+					ref->texture.handle = -1;
 					rc = true;
 				}
 			}
@@ -228,43 +340,16 @@ public:
 		return(rc);
 	}
 
-	//指定したセルマップのテクスチャを取得
-	cocos2d::Texture2D* getTexture(const ProjectData* data, const char* cellName)
-	{
-		cocos2d::Texture2D* tex = nullptr;
-
-		ToPointer ptr(data);
-		const Cell* cells = static_cast<const Cell*>(ptr(data->cells));
-
-		//名前からインデックスの取得
-		int cellindex = -1;
-		for (int i = 0; i < data->numCells; i++)
-		{
-			const Cell* cell = &cells[i];
-			const CellMap* cellMap = static_cast<const CellMap*>(ptr(cell->cellMap));
-			const char* name = static_cast<const char*>(ptr(cellMap->name));
-			if (strcmp(cellName, name) == 0)
-			{
-				CellRef* ref = _refs.at(i);
-				//テクスチャキャッシュ内を検索する
-				cocos2d::TextureCache* texCache = cocos2d::Director::getInstance()->getTextureCache();
-				tex = texCache->getTextureForKey(ref->texname);
-				break;
-			}
-		}
-
-		return (tex);
-	}
-
 protected:
 	void init(const ProjectData* data, const std::string& imageBaseDir)
 	{
-		CCASSERT(data != nullptr, "Invalid data");
+
+		SS_ASSERT2(data != NULL, "Invalid data");
 		
 		_textures.clear();
 		_refs.clear();
 		_texname.clear();
-		
+
 		ToPointer ptr(data);
 		const Cell* cells = static_cast<const Cell*>(ptr(data->cells));
 
@@ -278,26 +363,28 @@ protected:
 				const char* imagePath = static_cast<const char*>(ptr(cellMap->imagePath));
 				addTexture(imagePath, imageBaseDir, (SsTexWrapMode::_enum)cellMap->wrapmode, (SsTexFilterMode::_enum)cellMap->filtermode);
 			}
-			
+
+			//セル情報だけ入れておく
+			//テクスチャの読み込みはゲーム側に任せる
 			CellRef* ref = new CellRef();
 			ref->cell = cell;
 			ref->texture = _textures.at(cellMap->index);
 			ref->texname = _texname.at(cellMap->index);
-			ref->rect = cocos2d::Rect(cell->x, cell->y, cell->width, cell->height);
+			ref->rect = SSRect(cell->x, cell->y, cell->width, cell->height);
 			_refs.push_back(ref);
 		}
+
 	}
 	//キャッシュの削除
 	void releseReference(void)
 	{
-		for (int i = 0; i < (int)_refs.size(); i++)
+		for (int i = 0; i < _refs.size(); i++)
 		{
 			CellRef* ref = _refs.at(i);
-			if (ref->texture)
+			if (ref->texture.handle != -1 )
 			{
-				cocos2d::TextureCache* texCache = cocos2d::Director::getInstance()->getTextureCache();
-				texCache->removeTexture(ref->texture);
-				ref->texture = nullptr;
+				SSTextureRelese(ref->texture.handle);
+				ref->texture.handle = -1;
 			}
 			delete ref;
 		}
@@ -308,7 +395,7 @@ protected:
 	{
 		std::string path = "";
 		
-		if (cocos2d::FileUtils::getInstance()->isAbsolutePath(imagePath))
+		if (isAbsolutePath(imagePath))
 		{
 			// 絶対パスのときはそのまま扱う
 			path = imagePath;
@@ -324,55 +411,26 @@ protected:
 			}
 			path.append(imagePath);
 		}
-		
-		cocos2d::TextureCache* texCache = cocos2d::Director::getInstance()->getTextureCache();
-		cocos2d::CCImage::setPNGPremultipliedAlphaEnabled(false);	//ストーレートアルファで読み込む
-		cocos2d::Texture2D* tex = texCache->addImage(path);
-		cocos2d::CCImage::setPNGPremultipliedAlphaEnabled(true);	//ステータスを戻しておく
 
-		cocos2d::Texture2D::TexParams texParams;
-		switch (wrapmode)
-		{
-		case SsTexWrapMode::clamp:	//クランプ
-			texParams.wrapS = GL_CLAMP_TO_EDGE;
-			texParams.wrapT = GL_CLAMP_TO_EDGE;
-			break;
-		case SsTexWrapMode::repeat:	//リピート
-			texParams.wrapS = GL_REPEAT;
-			texParams.wrapT = GL_REPEAT;
-			break;
-		case SsTexWrapMode::mirror:	//ミラー
-			texParams.wrapS = GL_MIRRORED_REPEAT;
-			texParams.wrapT = GL_MIRRORED_REPEAT;
-			break;
-		}
-		switch (filtermode)
-		{
-		case SsTexFilterMode::nearlest:	//ニアレストネイバー
-			texParams.minFilter = GL_NEAREST;
-			texParams.magFilter = GL_NEAREST;
-			break;
-		case SsTexFilterMode::linear:	//リニア、バイリニア
-			texParams.minFilter = GL_LINEAR;
-			texParams.magFilter = GL_LINEAR;
-			break;
-		}
-		tex->setTexParameters(texParams);
+		//テクスチャの読み込み
+		long tex = SSTextureLoad(path.c_str(), wrapmode, filtermode);
+		SSLOG("load: %s", path.c_str());
+		TextuerData texdata;
+		texdata.handle = tex;
+		int w;
+		int h;
+		SSGetTextureSize(texdata.handle, w, h);
+		texdata.size_w = w;
+		texdata.size_h = h;
 
-		if (tex == nullptr)
-		{
-			std::string msg = "Can't load image > " + path;
-			CCASSERT(tex != nullptr, msg.c_str());
-		}
-		CCLOG("load: %s", path.c_str());
-		_textures.push_back(tex);
+		_textures.push_back(texdata);
 		_texname.push_back(path);
-	}
 
+	}
 
 protected:
 	std::vector<std::string>			_texname;
-	std::vector<cocos2d::Texture2D*>	_textures;
+	std::vector<TextuerData>			_textures;
 	std::vector<CellRef*>				_refs;
 };
 
@@ -397,7 +455,7 @@ public:
 		if (obj)
 		{
 			obj->init(data, imageBaseDir, cellCache);
-//			obj->autorelease();
+			//			obj->autorelease();
 		}
 		return obj;
 	}
@@ -416,14 +474,14 @@ public:
 		std::map<std::string, SsEffectModel*>::iterator it = _dic.begin();
 		while (it != _dic.end())
 		{
-			CCLOG("%s", (*it).second);
+			SSLOG("%s", (*it).second);
 			++it;
 		}
 	}
 protected:
 	void init(const ProjectData* data, const std::string& imageBaseDir, CellCache* cellCache)
 	{
-		CCASSERT(data != nullptr, "Invalid data");
+		SS_ASSERT2(data != NULL, "Invalid data");
 
 		ToPointer ptr(data);
 
@@ -454,7 +512,7 @@ protected:
 				SsEffectBehavior behavior;
 				//セル情報を作成
 				behavior.CellIndex = effectNode->cellIndex;
-				CellRef* cellRef = behavior.CellIndex >= 0 ? cellCache->getReference(behavior.CellIndex) : nullptr;
+				CellRef* cellRef = behavior.CellIndex >= 0 ? cellCache->getReference(behavior.CellIndex) : NULL;
 				if (cellRef)
 				{
 					behavior.refCell.pivot_X = cellRef->cell->pivot_X;
@@ -808,7 +866,8 @@ protected:
 			effectmodel->layoutScaleY = effectFile->layoutScaleY;	//レイアウトスケールY
 
 
-			CCLOG("effect key: %s", effectFileName.c_str());
+
+			SSLOG("effect key: %s", effectFileName.c_str());
 			_dic.insert(std::map<std::string, SsEffectModel*>::value_type(effectFileName, effectmodel));
 		}
 	}
@@ -822,10 +881,10 @@ protected:
 
 			if (effectmodel)
 			{
-				for (int nodeindex = 0; nodeindex < (int)effectmodel->nodeList.size(); nodeindex++)
+				for (int nodeindex = 0; nodeindex < effectmodel->nodeList.size(); nodeindex++)
 				{
 					SsEffectNode* node = effectmodel->nodeList.at(nodeindex);
-					for (int behaviorindex = 0; behaviorindex < (int)node->behavior.plist.size(); behaviorindex++)
+					for (int behaviorindex = 0; behaviorindex < node->behavior.plist.size(); behaviorindex++)
 					{
 						SsEffectElementBase* eb = node->behavior.plist.at(behaviorindex);
 						delete eb;
@@ -849,6 +908,7 @@ protected:
 protected:
 	std::map<std::string, SsEffectModel*>		_dic;
 };
+
 
 
 /**
@@ -876,14 +936,12 @@ public:
 	{
 		releseReference();
 	}
-
 	static AnimeCache* create(const ProjectData* data)
 	{
 		AnimeCache* obj = new AnimeCache();
 		if (obj)
 		{
 			obj->init(data);
-//			obj->autorelease();
 		}
 		return obj;
 	}
@@ -912,7 +970,7 @@ public:
 		std::map<std::string, AnimeRef*>::iterator it = _dic.begin();
 		while (it != _dic.end())
 		{
-			CCLOG("%s", (*it).second);
+			SSLOG("%s", (*it).second);
 			++it;
 		}
 	}
@@ -920,7 +978,7 @@ public:
 protected:
 	void init(const ProjectData* data)
 	{
-		CCASSERT(data != nullptr, "Invalid data");
+		SS_ASSERT2(data != NULL, "Invalid data");
 		
 		ToPointer ptr(data);
 		const AnimePackData* animePacks = static_cast<const AnimePackData*>(ptr(data->animePacks));
@@ -944,18 +1002,19 @@ protected:
 
 				// packName + animeNameでの登録
 				std::string key = toPackAnimeKey(packName, animeName);
-				CCLOG("anime key: %s", key.c_str());
+				SSLOG("anime key: %s", key.c_str());
 				_dic.insert(std::map<std::string, AnimeRef*>::value_type(key, ref));
 
 				// animeNameのみでの登録
 //				_dic.insert(std::map<std::string, AnimeRef*>::value_type(animeName, ref));
+				
 			}
 		}
 	}
 
 	static std::string toPackAnimeKey(const std::string& packName, const std::string& animeName)
 	{
-		return cocos2d::StringUtils::format("%s/%s", packName.c_str(), animeName.c_str());
+		return Format("%s/%s", packName.c_str(), animeName.c_str());
 	}
 
 	//キャッシュの削除
@@ -976,6 +1035,8 @@ protected:
 	}
 
 protected:
+
+public:
 	std::map<std::string, AnimeRef*>	_dic;
 };
 
@@ -1024,7 +1085,7 @@ struct ResourceSet
  * ResourceManager
  */
 
-static ResourceManager* defaultInstance = nullptr;
+static ResourceManager* defaultInstance = NULL;
 const std::string ResourceManager::s_null;
 
 ResourceManager* ResourceManager::getInstance()
@@ -1032,7 +1093,6 @@ ResourceManager* ResourceManager::getInstance()
 	if (!defaultInstance)
 	{
 		defaultInstance = ResourceManager::create();
-		defaultInstance->retain();
 	}
 	return defaultInstance;
 }
@@ -1049,29 +1109,45 @@ ResourceManager::~ResourceManager()
 ResourceManager* ResourceManager::create()
 {
 	ResourceManager* obj = new ResourceManager();
-	if (obj)
-	{
-		obj->autorelease();
-	}
 	return obj;
 }
 
 ResourceSet* ResourceManager::getData(const std::string& dataKey)
 {
-	ResourceSet* rs = NULL;
-	if (_dataDic.find(dataKey) != _dataDic.end())
-	{
-		rs = _dataDic.at(dataKey);
-	}
-	CCAssert(rs != NULL, "Invalid data");
+	ResourceSet* rs = _dataDic.at(dataKey);
 	return rs;
+}
+
+std::vector<std::string> ResourceManager::getAnimeName(const std::string& dataKey)
+{
+	std::vector<std::string> animename;
+	ResourceSet* rs = _dataDic.at(dataKey);
+	//アニメーション名を取得してリストを返す
+	std::map<std::string, ss::AnimeRef*>::iterator itpairstri = rs->animeCache->_dic.begin();
+	while (1)
+	{
+		// イテレータは pair<const string, int> 型なので、
+		std::string strKey = itpairstri->first;     // イテレータからキーが得られる。
+
+		if (strKey.find("/") == std::string::npos)	//ssae名が含まれていない場合はスキップ
+		{
+			continue;
+		}
+		animename.push_back(strKey);
+		itpairstri++;
+		if (itpairstri == rs->animeCache->_dic.end())
+		{
+			break;
+		}
+	}
+	return animename;
 }
 
 std::string ResourceManager::addData(const std::string& dataKey, const ProjectData* data, const std::string& imageBaseDir)
 {
-    CCASSERT(data != nullptr, "Invalid data");
-	CCASSERT(data->dataId == DATA_ID, "Not data id matched");
-	CCASSERT(data->version == DATA_VERSION, "Version number of data does not match");
+	SS_ASSERT2(data != NULL, "Invalid data");
+	SS_ASSERT2(data->dataId == DATA_ID, "Not data id matched");
+	SS_ASSERT2(data->version == DATA_VERSION, "Version number of data does not match");
 	
 	// imageBaseDirの指定がないときコンバート時に指定されたパスを使用する
 	std::string baseDir = imageBaseDir;
@@ -1089,13 +1165,12 @@ std::string ResourceManager::addData(const std::string& dataKey, const ProjectDa
 
 	AnimeCache* animeCache = AnimeCache::create(data);
 
-
 	ResourceSet* rs = new ResourceSet();
 	rs->data = data;
 	rs->isDataAutoRelease = false;
 	rs->cellCache = cellCache;
-	rs->effectCache = effectCache;
 	rs->animeCache = animeCache;
+	rs->effectCache = effectCache;
 	_dataDic.insert(std::map<std::string, ResourceSet*>::value_type(dataKey, rs));
 
 	return dataKey;
@@ -1103,19 +1178,20 @@ std::string ResourceManager::addData(const std::string& dataKey, const ProjectDa
 
 std::string ResourceManager::addDataWithKey(const std::string& dataKey, const std::string& ssbpFilepath, const std::string& imageBaseDir)
 {
-	std::string fullpath = cocos2d::FileUtils::getInstance()->fullPathForFilename(ssbpFilepath);
 
-	ssize_t nSize = 0;
-	void* loadData = cocos2d::FileUtils::getInstance()->getFileData(fullpath, "rb", &nSize);
-	if (loadData == nullptr)
+	std::string fullpath = ssbpFilepath;
+
+	unsigned long nSize = 0;
+	void* loadData = SSFileOpen(fullpath.c_str(), "rb", &nSize);
+	if (loadData == NULL)
 	{
 		std::string msg = "Can't load project data > " + fullpath;
-		CCASSERT(loadData != nullptr, msg.c_str());
+		SS_ASSERT2(loadData != NULL, msg.c_str());
 	}
 	
 	const ProjectData* data = static_cast<const ProjectData*>(loadData);
-	CCASSERT(data->dataId == DATA_ID, "Not data id matched");
-	CCASSERT(data->version == DATA_VERSION, "Version number of data does not match");
+	SS_ASSERT2(data->dataId == DATA_ID, "Not data id matched");
+	SS_ASSERT2(data->version == DATA_VERSION, "Version number of data does not match");
 	
 	std::string baseDir = imageBaseDir;
 	if (imageBaseDir == s_null)
@@ -1136,14 +1212,14 @@ std::string ResourceManager::addDataWithKey(const std::string& dataKey, const st
 			splitPath(directory, filename, ssbpFilepath);
 			baseDir = directory;
 		}
-		//CCLOG("imageBaseDir: %s", baseDir.c_str());
+		//SSLOG("imageBaseDir: %s", baseDir.c_str());
 	}
 
 	addData(dataKey, data, baseDir);
 	
 	// リソースが破棄されるとき一緒にロードしたデータも破棄する
 	ResourceSet* rs = getData(dataKey);
-	CCASSERT(rs != nullptr, "");
+	SS_ASSERT2(rs != NULL, "");
 	rs->isDataAutoRelease = true;
 	
 	return dataKey;
@@ -1163,7 +1239,7 @@ std::string ResourceManager::addData(const std::string& ssbpFilepath, const std:
     {
         dataKey = filename.substr(0, pos);
     }
-	
+
 	//登録されている名前か判定する
 	std::map<std::string, ResourceSet*>::iterator it = _dataDic.find(dataKey);
 	if (it != _dataDic.end())
@@ -1173,18 +1249,16 @@ std::string ResourceManager::addData(const std::string& ssbpFilepath, const std:
 		return str;
 	}
 
-
 	return addDataWithKey(dataKey, ssbpFilepath, imageBaseDir);
 }
 
-//バイナリデータの解放
-void ResourceManager::removeData(const std::string& ssbpName)
+void ResourceManager::removeData(const std::string& dataKey)
 {
-	ResourceSet* rs = getData(ssbpName);
+	ResourceSet* rs = getData(dataKey);
 
 	//バイナリデータの削除
 	delete rs;
-	_dataDic.erase(ssbpName);
+	_dataDic.erase(dataKey);
 }
 
 void ResourceManager::removeAllData()
@@ -1200,25 +1274,24 @@ void ResourceManager::removeAllData()
 }
 
 //データ名、セル名を指定して、セルで使用しているテクスチャを変更する
-bool ResourceManager::changeTexture(char* ssbpName, char* ssceName, cocos2d::Texture2D* texture)
+bool ResourceManager::changeTexture(char* ssbpName, char* ssceName, long texture)
 {
 	bool rc = false;
 
 	ResourceSet* rs = getData(ssbpName);
 	rc = rs->cellCache->setCellRefTexture(rs->data, ssceName, texture);
 
-	return( rc );
+	return(rc);
 }
 
-//セルとして読み込んだテクスチャを取得する
-cocos2d::Texture2D* ResourceManager::getTexture(char* ssbpName, char* ssceName)
+//指定したデータのテクスチャを破棄します
+bool ResourceManager::releseTexture(char* ssbpName)
 {
-	cocos2d::Texture2D* tex = nullptr;
 
 	ResourceSet* rs = getData(ssbpName);
-	tex = rs->cellCache->getTexture(rs->data, ssceName);
+	bool rc = rs->cellCache->releseTexture(rs->data);
 
-	return(tex);
+	return(rc);
 }
 
 //アニメーションの開始フレーム数を取得する
@@ -1230,8 +1303,8 @@ int ResourceManager::getStartFrame(std::string ssbpName, std::string animeName)
 	AnimeRef* animeRef = rs->animeCache->getReference(animeName);
 	if (animeRef == NULL)
 	{
-		std::string msg = cocos2d::StringUtils::format("Not found animation > anime=%s", animeName.c_str());
-		CCASSERT(animeRef != NULL, msg.c_str());
+		std::string msg = Format("Not found animation > anime=%s", animeName.c_str());
+		SS_ASSERT2(animeRef != NULL, msg.c_str());
 	}
 	rc = animeRef->animationData->startFrames;
 
@@ -1247,8 +1320,8 @@ int ResourceManager::getEndFrame(std::string ssbpName, std::string animeName)
 	AnimeRef* animeRef = rs->animeCache->getReference(animeName);
 	if (animeRef == NULL)
 	{
-		std::string msg = cocos2d::StringUtils::format("Not found animation > anime=%s", animeName.c_str());
-		CCASSERT(animeRef != NULL, msg.c_str());
+		std::string msg = Format("Not found animation > anime=%s", animeName.c_str());
+		SS_ASSERT2(animeRef != NULL, msg.c_str());
 	}
 	rc = animeRef->animationData->endFrames;
 
@@ -1264,8 +1337,8 @@ int ResourceManager::getTotalFrame(std::string ssbpName, std::string animeName)
 	AnimeRef* animeRef = rs->animeCache->getReference(animeName);
 	if (animeRef == NULL)
 	{
-		std::string msg = cocos2d::StringUtils::format("Not found animation > anime=%s", animeName.c_str());
-		CCASSERT(animeRef != NULL, msg.c_str());
+		std::string msg = Format("Not found animation > anime=%s", animeName.c_str());
+		SS_ASSERT2(animeRef != NULL, msg.c_str());
 	}
 	rc = animeRef->animationData->totalFrames;
 
@@ -1286,132 +1359,15 @@ bool ResourceManager::isDataKeyExists(const std::string& dataKey) {
 
 
 /**
-* SSPManager
-*/
-static SSPManager* defaultSSPManegerInstance = nullptr;
-SSPManager* SSPManager::getInstance()
-{
-	if (!defaultSSPManegerInstance)
-	{
-		defaultSSPManegerInstance = SSPManager::create();
-		defaultSSPManegerInstance->retain();
-	}
-	return defaultSSPManegerInstance;
-}
-
-SSPManager::SSPManager(void)
-{
-	//エフェクトバッファの作成
-	_effectSpriteCount = 0;
-	_effectSprite.clear();		//デストラクタのみ行う
-	_isUpdate = true;
-	_useOffscreenRendering = false;
-}
-
-SSPManager::~SSPManager()
-{
-	releseEffectBuffer();
-}
-
-SSPManager* SSPManager::create()
-{
-	SSPManager* obj = new SSPManager();
-	if (obj)
-	{
-		obj->autorelease();
-	}
-	return obj;
-}
-
-void SSPManager::createEffectBuffer(int buffSize)
-{
-	//エフェクトバッファの解放
-	releseEffectBuffer();
-		
-	//エフェクト用パーツ生成
-	if (_effectSprite.size() == 0)
-	{
-		for (auto i = 0; i < buffSize; i++)
-		{
-			CustomSprite* sprite = CustomSprite::create();
-			sprite->_parent = nullptr;
-			sprite->setVisible(false);
-			sprite->_isEffectSprite = true;
-
-			_effectSprite.pushBack(sprite);
-		}
-	}
-}
-
-void SSPManager::releseEffectBuffer()
-{
-	//エフェクトバッファの解放
-	int i;
-	for (i = 0; i < _effectSprite.size(); i++)	//
-	{
-		CustomSprite *sp = _effectSprite.at(i);
-		sp->removeFromParentAndCleanup(true);
-	}
-	_effectSpriteCount = 0;
-	_effectSprite.clear();
-}
-
-//各シーンのアップデートで必ず呼び出してください
-void SSPManager::update()
-{
-	// エフェクトのアップデート
-	if (_isUpdate == true)
-	{
-		//スプライトをすべて非表示にする
-		int i = 0;
-		for (i = 0; i < _effectSpriteCount; i++)	//前回更新した分だけ初期化する
-		{
-			CustomSprite *sp = _effectSprite.at(i);
-			sp->setVisible(false);
-			sp->removeFromParentAndCleanup(false);
-		}
-		_effectSpriteCount = 0;
-	}
-	_isUpdate = false;
-}
-
-//この関数はプレイヤー内部で使用します。ゲームから直接呼び出しません。
-CustomSprite* SSPManager::getEffectBuffer()
-{
-	CustomSprite* sp = 0;
-	if ((_effectSprite.size() > 0) && (_effectSpriteCount < _effectSprite.size()))
-	{
-		sp = _effectSprite.at(_effectSpriteCount);
-		_effectSpriteCount++;
-	}
-
-	return(sp);
-}
-
-//この関数はプレイヤー内部で使用します。ゲームから直接呼び出しません。
-void SSPManager::setUpdateFlag()
-{
-	if (_useOffscreenRendering == false)
-	{
-		_isUpdate = true;
-	}
-}
-void SSPManager::setUseOffscreenRendering( bool use)
-{
-	_useOffscreenRendering = use;
-}
-
-/**
  * Player
  */
 
 static const std::string s_nullString;
 
 Player::Player(void)
-	: _resman(nullptr)
-	, _currentRs(nullptr)
-	, _currentAnimeRef(nullptr)
-
+	: _resman(NULL)
+	, _currentRs(NULL)
+	, _currentAnimeRef(NULL)
 	, _frameSkipEnabled(true)
 	, _playingFrame(0.0f)
 	, _step(1.0f)
@@ -1420,32 +1376,21 @@ Player::Player(void)
 	, _isPlaying(false)
 	, _isPausing(false)
 	, _prevDrawFrameNo(-1)
-	, _InstanceAlpha(255)
-	, _InstanceRotX(0.0f)
-	, _InstanceRotY(0.0f)
-	, _InstanceRotZ(0.0f)
-	, _isContentScaleFactorAuto(true)
 	, _col_r(255)
 	, _col_g(255)
 	, _col_b(255)
 	, _instanceOverWrite(false)
-	, _offScreentexture(nullptr)
-	, _userDataCallback(nullptr)
-	, _playEndCallback(nullptr)
-	, _offScreenWidth(0)
-	, _offScreenHeight(0)
-	, _offScreenPivotX(0.5f)
-	, _offScreenPivotY(0.5f)
 	, _motionBlendPlayer(NULL)
 	, _blendTime(0.0f)
 	, _blendTimeMax(0.0f)
-	, _startFrameOverWrite(-1)		//開始フレームの上書き設定
-	, _endFrameOverWrite(-1)		//終了フレームの上書き設定
+	,_startFrameOverWrite(-1)	//開始フレームの上書き設定
+	,_endFrameOverWrite(-1)		//終了フレームの上書き設定
 	, _seedOffset(0)
-	, _maskFuncFlag(true)
-	, _maskParentSetting(true)
-	, _parentMatUse(false)					//プレイヤーが持つ継承されたマトリクスがあるか？
-	, _firstDraw(false)
+	,_maskFuncFlag(true)
+	,_maskParentSetting(true)
+	,_parentMatUse(false)					//プレイヤーが持つ継承されたマトリクスがあるか？
+	,_userDataCallback(nullptr)
+	,_playEndCallback(nullptr)
 {
 	int i;
 	for (i = 0; i < PART_VISIBLE_MAX; i++)
@@ -1454,16 +1399,24 @@ Player::Player(void)
 		_partIndex[i] = -1;
 		_cellChange[i] = -1;
 	}
-	_instanseParam.clear();
-	_parentMat = cocos2d::Mat4::IDENTITY;
+	_state.init();
+
+	IdentityMatrix(_parentMat);
+
 }
 
 Player::~Player()
 {
-	this->unscheduleUpdate();
+	if (_motionBlendPlayer)
+	{
+		delete (_motionBlendPlayer);
+		_motionBlendPlayer = NULL;
+	}
+
 	releaseParts();
 	releaseData();
 	releaseResourceManager();
+	releaseAnime();
 }
 
 Player* Player::create(ResourceManager* resman)
@@ -1472,27 +1425,19 @@ Player* Player::create(ResourceManager* resman)
 	if (obj && obj->init())
 	{
 		obj->setResourceManager(resman);
-		obj->setSSPManager();
-		obj->autorelease();
-		obj->scheduleUpdate();
 		return obj;
 	}
-	CC_SAFE_DELETE(obj);
-	return nullptr;
+	SS_SAFE_DELETE(obj);
+	return NULL;
 }
 
 bool Player::init()
 {
-    if (!cocos2d::Sprite::init())
-    {
-        return false;
-    }
 	return true;
 }
 
 void Player::releaseResourceManager()
 {
-	CC_SAFE_RELEASE_NULL(_resman);
 }
 
 void Player::setResourceManager(ResourceManager* resman)
@@ -1505,19 +1450,12 @@ void Player::setResourceManager(ResourceManager* resman)
 		resman = ResourceManager::getInstance();
 	}
 	
-	CC_SAFE_RETAIN(resman);
 	_resman = resman;
-}
-
-void Player::setSSPManager()
-{
-	SSPManager* sspman = SSPManager::getInstance();
-	_sspman = sspman;
 }
 
 int Player::getStartFrame() const
 {
-	if (_currentAnimeRef)
+	if (_currentAnimeRef )
 	{
 		return(_currentAnimeRef->animationData->startFrames);
 	}
@@ -1552,6 +1490,19 @@ int Player::getTotalFrame() const
 
 }
 
+int Player::getFPS() const
+{
+	if (_currentAnimeRef)
+	{
+		return(_currentAnimeRef->animationData->fps);
+	}
+	else
+	{
+		return(0);
+	}
+
+}
+
 int Player::getFrameNo() const
 {
 	return static_cast<int>(_playingFrame);
@@ -1562,7 +1513,7 @@ void Player::setFrameNo(int frameNo)
 	if (_currentAnimeRef)
 	{
 		_playingFrame = (float)frameNo;
-		if (_playingFrame < _currentAnimeRef->animationData->startFrames)
+		if (_playingFrame < _currentAnimeRef->animationData->startFrames )
 		{
 			_playingFrame = _currentAnimeRef->animationData->startFrames;
 		}
@@ -1607,7 +1558,7 @@ void Player::clearLoopCount()
 void Player::setFrameSkipEnabled(bool enabled)
 {
 	_frameSkipEnabled = enabled;
-	_playingFrame = (int)_playingFrame;
+	_playingFrame = (float)((int)_playingFrame);
 }
 
 bool Player::isFrameSkipEnabled() const
@@ -1615,31 +1566,19 @@ bool Player::isFrameSkipEnabled() const
 	return _frameSkipEnabled;
 }
 
-void Player::setUserDataCallback(const UserDataCallback& callback)
-{
-	_userDataCallback = callback;
-}
-
-void Player::setPlayEndCallback(const PlayEndCallback& callback)
-{
-	_playEndCallback = callback;
-}
-
-
 void Player::setData(const std::string& dataKey)
 {
 	ResourceSet* rs = _resman->getData(dataKey);
 	_currentdataKey = dataKey;
-	if (rs == nullptr)
+	if (rs == NULL)
 	{
-		std::string msg = cocos2d::StringUtils::format("Not found data > %s", dataKey.c_str());
-		CCASSERT(rs != nullptr, msg.c_str());
+		std::string msg = Format("Not found data > %s", dataKey.c_str());
+		SS_ASSERT2(rs != NULL, msg.c_str());
 	}
 	
 	if (_currentRs != rs)
 	{
 //		releaseData();
-//		rs->retain();
 		_currentRs = rs;
 	}
 }
@@ -1647,31 +1586,29 @@ void Player::setData(const std::string& dataKey)
 void Player::releaseData()
 {
 	releaseAnime();
-//	CC_SAFE_RELEASE_NULL(_currentRs);
 }
 
 
 void Player::releaseAnime()
 {
 	releaseParts();
-//	CC_SAFE_RELEASE_NULL(_currentAnimeRef);
 }
 
 void Player::play(const std::string& ssaeName, const std::string& motionName, int loop, int startFrameNo)
 {
-	auto animeName = cocos2d::StringUtils::format("%s/%s", ssaeName.c_str(), motionName.c_str());
-	play(animeName, loop,startFrameNo);
+	std::string animeName = Format("%s/%s", ssaeName.c_str(), motionName.c_str());
+	play(animeName, loop, startFrameNo);
 }
 
 void Player::play(const std::string& animeName, int loop, int startFrameNo)
 {
-	CCASSERT(_currentRs != nullptr, "Not select data");
+	SS_ASSERT2(_currentRs != NULL, "Not select data");
 
 	AnimeRef* animeRef = _currentRs->animeCache->getReference(animeName);
-	if (animeRef == nullptr)
+	if (animeRef == NULL)
 	{
-		auto msg = cocos2d::StringUtils::format("Not found animation > anime=%s", animeName.c_str());
-		CCASSERT(animeRef != nullptr, msg.c_str());
+		std::string msg = Format("Not found animation > anime=%s", animeName.c_str());
+		SS_ASSERT2(animeRef != NULL, msg.c_str());
 	}
 	_currentAnimename = animeName;
 
@@ -1682,9 +1619,6 @@ void Player::play(AnimeRef* animeRef, int loop, int startFrameNo)
 {
 	if (_currentAnimeRef != animeRef)
 	{
-//		CC_SAFE_RELEASE_NULL(_currentAnimeRef);
-//		animeRef->retain();
-
 		_currentAnimeRef = animeRef;
 		
 		allocParts(animeRef->animePackData->numParts, false);
@@ -1698,10 +1632,11 @@ void Player::play(AnimeRef* animeRef, int loop, int startFrameNo)
 	_isPausing = false;
 	_prevDrawFrameNo = -1;
 	_isPlayFirstUserdataChack = true;
-	_isPlayFirstUpdate = true;
 	_animefps = _currentAnimeRef->animationData->fps;
 	setStartFrame(-1);
 	setEndFrame(-1);
+
+	SSGetPlusDirection(_direction, _window_w, _window_h);
 
 	setFrame((int)_playingFrame);
 }
@@ -1715,7 +1650,6 @@ void Player::motionBlendPlay(const std::string& animeName, int loop, int startFr
 		if (_motionBlendPlayer == NULL)
 		{
 			_motionBlendPlayer = ss::Player::create();
-			addChild(_motionBlendPlayer);
 		}
 		int loopnum = _loop;
 		if (_loop > 0)
@@ -1725,8 +1659,6 @@ void Player::motionBlendPlay(const std::string& animeName, int loop, int startFr
 		_motionBlendPlayer->setData(_currentdataKey);        // ssbpファイル名（拡張子不要）
 		_motionBlendPlayer->play(_currentAnimename, loopnum, getFrameNo());
 		_motionBlendPlayer->setStep(_step);
-		_motionBlendPlayer->setVisible(false);
-
 		if (_loop > 0)
 		{
 			if (_loop == _loopCount)	//アニメは最後まで終了している
@@ -1741,6 +1673,8 @@ void Player::motionBlendPlay(const std::string& animeName, int loop, int startFr
 	play(animeName, loop, startFrameNo);
 
 }
+
+
 
 void Player::animePause()
 {
@@ -1759,20 +1693,17 @@ void Player::stop()
 
 const std::string& Player::getPlayPackName() const
 {
-	return _currentAnimeRef != nullptr ? _currentAnimeRef->packName : s_nullString;
+	return _currentAnimeRef != NULL ? _currentAnimeRef->packName : s_nullString;
 }
 
 const std::string& Player::getPlayAnimeName() const
 {
-	return _currentAnimeRef != nullptr ? _currentAnimeRef->animeName : s_nullString;
+	return _currentAnimeRef != NULL ? _currentAnimeRef->animeName : s_nullString;
 }
 
 
 void Player::update(float dt)
 {
-	//SSPlayerの定時処理
-	_sspman->update();
-
 	updateFrame(dt);
 }
 
@@ -1787,11 +1718,11 @@ void Player::updateFrame(float dt)
 	{
 		startFrame = _startFrameOverWrite;
 	}
-	if (_endFrameOverWrite != -1)
-	{
+	if (_endFrameOverWrite != -1 )
+	{ 
 		endFrame = _endFrameOverWrite;
 	}
-	CCASSERT(startFrame < endFrame, "Playframe is out of range.");
+	SS_ASSERT2(startFrame <= endFrame, "Playframe is out of range.");
 
 	bool playEnd = false;
 	bool toNextFrame = _isPlaying && !_isPausing;
@@ -1801,19 +1732,19 @@ void Player::updateFrame(float dt)
 		// forward frame.
 		const int numFrames = endFrame;
 
-		float fdt = _frameSkipEnabled ? dt : cocos2d::Director::getInstance()->getAnimationInterval();
+		float fdt = dt;
 		float s = fdt / (1.0f / _currentAnimeRef->animationData->fps);
 		
-		//if (!m_frameSkipEnabled) CCLOG("%f", s);
+		//if (!m_frameSkipEnabled) SSLOG("%f", s);
 		
 		float next = _playingFrame + (s * _step);
 
 		int nextFrameNo = static_cast<int>(next);
 		float nextFrameDecimal = next - static_cast<float>(nextFrameNo);
 		int currentFrameNo = static_cast<int>(_playingFrame);
-		
+
 		//playを行って最初のupdateでは現在のフレームのユーザーデータを確認する
-		if (_isPlayFirstUserdataChack == true )
+		if (_isPlayFirstUserdataChack == true)
 		{
 			checkUserData(currentFrameNo);
 			_isPlayFirstUserdataChack = false;
@@ -1873,7 +1804,7 @@ void Player::updateFrame(float dt)
 					_seedOffset++;	//シードオフセットを加算
 				}
 				currentFrameNo = decFrameNo;
-
+				
 				// このフレームのユーザーデータをチェック
 				// check the user data of this frame.
 				checkUserData(currentFrameNo);
@@ -1881,36 +1812,36 @@ void Player::updateFrame(float dt)
 		}
 		
 		_playingFrame = static_cast<float>(currentFrameNo) + nextFrameDecimal;
+
+
 	}
 	else
 	{
 		//アニメを手動で更新する場合
 		checkUserData(getFrameNo());
 	}
-
-	setFrame(getFrameNo(), dt);
-
 	//モーションブレンド用アップデート
 	if (_motionBlendPlayer)
 	{
-//		_motionBlendPlayer->update(dt);
+		_motionBlendPlayer->update(dt);
 		_blendTime = _blendTime + dt;
 		if (_blendTime >= _blendTimeMax)
 		{
 			_blendTime = _blendTimeMax;
 			//プレイヤーを削除する
-//			delete (_motionBlendPlayer);
-//			_motionBlendPlayer = NULL;
-			removeChild(_motionBlendPlayer, true);
+			delete (_motionBlendPlayer);
 			_motionBlendPlayer = NULL;
 		}
 	}
 
+	setFrame(getFrameNo(), dt);
+	
 	if (playEnd)
 	{
 		stop();
 	
 		// 再生終了コールバックの呼び出し
+//		SSPlayEnd(this);
 		if (_playEndCallback)
 		{
 			_playEndCallback(this);
@@ -1919,52 +1850,29 @@ void Player::updateFrame(float dt)
 }
 
 
-
-
 void Player::allocParts(int numParts, bool useCustomShaderProgram)
 {
-	int partnum = _parts.size();
-	if (partnum < numParts)
+	for (int i = 0; i < _parts.size(); i++)
+	{
+		CustomSprite* sprite = _parts.at(i);
+		if (sprite)
+		{
+			delete sprite;
+			sprite = 0;
+		}
+	}
+
+	_parts.clear();	//すべてのパーツを消す
 	{
 		// パーツ数だけCustomSpriteを作成する
-		// create CustomSprite objects.
-		float globalZOrder = getGlobalZOrder();
-		for (auto i = partnum; i < numParts; i++)
-		{
-			CustomSprite* sprite =  CustomSprite::create();
-			sprite->_parentPlayer = this;
-
-			if (globalZOrder != 0.0f)
-			{
-				sprite->setGlobalZOrder(globalZOrder);
-			}
-			
-			_parts.pushBack(sprite);
-			addChild(sprite);
-		}
-	}
-	else
-	{
-		// 多い分は解放する
-		for (auto i = partnum - 1; i >= numParts; i--)
-		{
-			CustomSprite* sprite = static_cast<CustomSprite*>(_parts.at(i));
-			removeChild(sprite, true);
-			_parts.eraseObject(sprite);
-		}
-	
-		// パラメータ初期化
+//		// create CustomSprite objects.
 		for (int i = 0; i < numParts; i++)
 		{
-			CustomSprite* sprite = static_cast<CustomSprite*>(_parts.at(i));
-			sprite->initState();
-		}
-	}
+			CustomSprite* sprite =  CustomSprite::create();
+			sprite->_ssplayer = NULL;
 
-	// 全て一旦非表示にする
-	for (auto child : getChildren())
-	{
-		child->setVisible(false);
+			_parts.push_back(sprite);
+		}
 	}
 }
 
@@ -1972,7 +1880,25 @@ void Player::releaseParts()
 {
 	// パーツの子CustomSpriteを全て削除
 	// remove children CCSprite objects.
-	removeAllChildrenWithCleanup(true);
+	if (_currentRs)
+	{
+		if (_currentAnimeRef)
+		{
+
+			ToPointer ptr(_currentRs->data);
+			const AnimePackData* packData = _currentAnimeRef->animePackData;
+			const PartData* parts = static_cast<const PartData*>(ptr(packData->parts));
+			if (_parts.size() > 0)
+			{
+				for (int partIndex = 0; partIndex < packData->numParts; partIndex++)
+				{
+					CustomSprite* sprite = static_cast<CustomSprite*>(_parts.at(partIndex));
+					SS_SAFE_DELETE(sprite->_ssplayer);
+				}
+			}
+		}
+	}
+
 	_parts.clear();
 }
 
@@ -1999,19 +1925,15 @@ void Player::setPartsParentage()
 		}
 		else
 		{
-			sprite->_parent = nullptr;
+			sprite->_parent = NULL;
 		}
 
 		//インスタンスパーツの生成
-
-		if (sprite->_ssplayer)
-		{
-			sprite->_ssplayer->removeFromParentAndCleanup(true);	//子供のパーツを削除
-			sprite->_ssplayer = 0;
-		}
-
 		std::string refanimeName = static_cast<const char*>(ptr(partData->refname));
+
 		sprite->_maskInfluence = partData->maskInfluence && _maskParentSetting;	//インスタンス時の親パーツを加味したマスク対象
+
+		SS_SAFE_DELETE(sprite->_ssplayer);
 		if (refanimeName != "")
 		{
 			//インスタンスパーツが設定されている
@@ -2022,8 +1944,6 @@ void Player::setPartsParentage()
 			sprite->_ssplayer->setData(_currentdataKey);
 			sprite->_ssplayer->play(refanimeName);				 // アニメーション名を指定(ssae名/アニメーション名も可能、詳しくは後述)
 			sprite->_ssplayer->animePause();
-			sprite->addChild(sprite->_ssplayer);
-
 		}
 
 		//エフェクトパーツの生成
@@ -2039,32 +1959,18 @@ void Player::setPartsParentage()
 			SsEffectModel* effectmodel = _currentRs->effectCache->getReference(refeffectName);
 			if (effectmodel)
 			{
-
 				//エフェクトクラスにパラメータを設定する
 				SsEffectRenderV2* er = new SsEffectRenderV2();
 				sprite->refEffect = er;
 				sprite->refEffect->setParentAnimeState(&sprite->partState);
 				sprite->refEffect->setEffectData(effectmodel);
-				sprite->refEffect->setSSPManeger(_sspman);
-
+//				sprite->refEffect->setEffectSprite(&_effectSprite);	//エフェクトクラスに渡す都合上publicにしておく
+//				sprite->refEffect->setEffectSpriteCount(&_effectSpriteCount);	//エフェクトクラスに渡す都合上publicにしておく
 				sprite->refEffect->setSeed(getRandomSeed());
 				sprite->refEffect->reload();
 				sprite->refEffect->stop();
 				sprite->refEffect->setLoop(false);
 			}
-		}
-	}
-}
-
-void Player::setGlobalZOrder(float globalZOrder)
-{
-	if (_globalZOrder != globalZOrder)
-	{
-		cocos2d::Sprite::setGlobalZOrder(globalZOrder);
-
-		for (auto child : getChildren())
-		{
-			child->setGlobalZOrder(globalZOrder);
 		}
 	}
 }
@@ -2083,7 +1989,7 @@ const char* Player::getPartName(int partId) const
 	ToPointer ptr(_currentRs->data);
 
 	const AnimePackData* packData = _currentAnimeRef->animePackData;
-	CCAssert(partId >= 0 && partId < packData->numParts, "partId is out of range.");
+	SS_ASSERT2(partId >= 0 && partId < packData->numParts, "partId is out of range.");
 
 	const PartData* partData = static_cast<const PartData*>(ptr(packData->parts));
 	const char* name = static_cast<const char*>(ptr(partData[partId].name));
@@ -2108,6 +2014,9 @@ int Player::indexOfPart(const char* partName) const
 /*
  パーツ名から指定フレームのパーツステータスを取得します。
  必要に応じて　ResluteState　を編集しデータを取得してください。
+
+ 指定したフレームの状態にすべてのパーツのステータスを更新します。
+ 描画を行う前にupdateを呼び出し、パーツステータスを表示に状態に戻してからdrawしてください。
 */
 bool Player::getPartState(ResluteState& result, const char* name, int frameNo)
 {
@@ -2146,52 +2055,46 @@ bool Player::getPartState(ResluteState& result, const char* name, int frameNo)
 					//当たり判定などのパーツに付属するフラグを取得する場合は　partData　のメンバを参照してください。
 					//親から継承したスケールを反映させる場合はxスケールは_mat.m[0]、yスケールは_mat.m[5]をかけて使用してください。
 					CustomSprite* sprite = static_cast<CustomSprite*>(_parts.at(partIndex));
-
-					//プレイヤーの位置を取得
-					cocos2d::Vec2 pos = getPosition();
-					//プレイヤーのスケール値を取得
-					float scaleX = getScaleX() * sprite->_mat.m[0];
-					float scaleY = getScaleY() * sprite->_mat.m[5];
+					result.x = sprite->_state.mat[12];
+					result.y = sprite->_state.mat[13];
 
 					//パーツアトリビュート
-//					sprite->_state;												//SpriteStudio上のアトリビュートの値は_stateから取得してください
-					result.flags = sprite->_state.flags;						// このフレームで更新が行われるステータスのフラグ
-					result.cellIndex = sprite->_state.cellIndex;				// パーツに割り当てられたセルの番号
-					result.x = ( sprite->_mat.m[12] * scaleX ) + pos.x;			//画面上のX座標を取得
-					result.y = ( sprite->_mat.m[13] * scaleY ) + pos.y;			//画面上のY座標を取得
-					result.z = sprite->_state.z;								// Z座標アトリビュートを取得
-					result.pivotX = sprite->_state.pivotX;						// 原点Xオフセット＋セルに設定された原点オフセットX
-					result.pivotY = sprite->_state.pivotY;						// 原点Yオフセット＋セルに設定された原点オフセットY
-					result.rotationX = sprite->_state.rotationX;				// アトリビュート：X回転
-					result.rotationY = sprite->_state.rotationY;				// アトリビュート：Y回転
-					result.rotationZ = sprite->_state.rotationZ;				// アトリビュート：Z回転
-					result.scaleX = sprite->_state.scaleX;						// アトリビュート：Xスケール
-					result.scaleY = sprite->_state.scaleY;						// アトリビュート：Yスケール
-					result.localscaleX = sprite->_state.localscaleX;			// Xローカルスケール
-					result.localscaleY = sprite->_state.localscaleY;			// Yローカルスケール
-					result.opacity = sprite->_state.opacity;					// 不透明度（0～255）（親子関係計算済）
-					result.localopacity = sprite->_state.localopacity;			// ローカル不透明度（0～255）
-					result.size_X = sprite->_state.size_X;						// アトリビュート：Xサイズ
-					result.size_Y = sprite->_state.size_Y;						// アトリビュート：Yサイズ
-					result.scaledsize_X = sprite->_state.size_X * scaleX;		/// 画面上のXサイズ（親子関係計算済）
-					result.scaledsize_Y = sprite->_state.size_Y * scaleY;		/// 画面上のYサイズ（親子関係計算済）
-					result.uv_move_X = sprite->_state.uv_move_X;				// アトリビュート：UV X移動
-					result.uv_move_Y = sprite->_state.uv_move_Y;				// アトリビュート：UV Y移動
-					result.uv_rotation = sprite->_state.uv_rotation;			// アトリビュート：UV 回転
-					result.uv_scale_X = sprite->_state.uv_scale_X;				// アトリビュート：UV Xスケール
-					result.uv_scale_Y = sprite->_state.uv_scale_Y;				// アトリビュート：UV Yスケール
-					result.boundingRadius = sprite->_state.boundingRadius;		// アトリビュート：当たり半径
-					result.priority = sprite->_state.priority;					// アトリビュート：優先度
-					result.partsColorFunc = sprite->_state.partsColorFunc;		// アトリビュート：カラーブレンドのブレンド方法
-					result.partsColorType = sprite->_state.partsColorType;		// アトリビュート：カラーブレンドの単色か頂点カラーか。
-					result.flipX = sprite->_state.flipX;						// 横反転（親子関係計算済）
-					result.flipY = sprite->_state.flipY;						// 縦反転（親子関係計算済）
-					result.isVisibled = sprite->_state.isVisibled;				// 非表示（親子関係計算済）
+//					sprite->_state;													//SpriteStudio上のアトリビュートの値は_stateから取得してください
+					result.flags = sprite->_state.flags;							// このフレームで更新が行われるステータスのフラグ
+					result.cellIndex = sprite->_state.cellIndex;					// パーツに割り当てられたセルの番号
+					result.x = sprite->_state.mat[12];
+					result.y = sprite->_state.mat[13];
+					result.z = sprite->_state.z;
+					result.pivotX = sprite->_state.pivotX;							// 原点Xオフセット＋セルに設定された原点オフセットX
+					result.pivotY = sprite->_state.pivotY;							// 原点Yオフセット＋セルに設定された原点オフセットY
+					result.rotationX = sprite->_state.rotationX;					// X回転（親子関係計算済）
+					result.rotationY = sprite->_state.rotationY;					// Y回転（親子関係計算済）
+					result.rotationZ = sprite->_state.rotationZ;					// Z回転（親子関係計算済）
+					result.scaleX = sprite->_state.Calc_scaleX;						// Xスケール（親子関係計算済）
+					result.scaleY = sprite->_state.Calc_scaleY;						// Yスケール（親子関係計算済）
+					result.localscaleX = sprite->_state.localscaleX;				// Xローカルスケール
+					result.localscaleY = sprite->_state.localscaleY;				// Yローカルスケール
+					result.opacity = sprite->_state.Calc_opacity;					// 不透明度（0～255）（親子関係計算済）
+					result.localopacity = sprite->_state.localopacity;				// ローカル不透明度（0～255）
+					result.size_X = sprite->_state.size_X;							// SS6アトリビュート：Xサイズ
+					result.size_Y = sprite->_state.size_Y;							// SS6アトリビュート：Xサイズ
+					result.uv_move_X = sprite->_state.uv_move_X;					// SS6アトリビュート：UV X移動
+					result.uv_move_Y = sprite->_state.uv_move_Y;					// SS6アトリビュート：UV Y移動
+					result.uv_rotation = sprite->_state.uv_rotation;				// SS6アトリビュート：UV 回転
+					result.uv_scale_X = sprite->_state.uv_scale_X;					// SS6アトリビュート：UV Xスケール
+					result.uv_scale_Y = sprite->_state.uv_scale_Y;					// SS6アトリビュート：UV Yスケール
+					result.boundingRadius = sprite->_state.boundingRadius;			// SS6アトリビュート：当たり半径
+					result.priority = sprite->_state.priority;						// SS6アトリビュート：優先度
+					result.partsColorFunc = sprite->_state.partsColorFunc;			// SS6アトリビュート：カラーブレンドのブレンド方法
+					result.partsColorType = sprite->_state.partsColorType;			// SS6アトリビュート：カラーブレンドの単色か頂点カラーか。
+					result.flipX = sprite->_state.flipX;							// 横反転（親子関係計算済）
+					result.flipY = sprite->_state.flipY;							// 縦反転（親子関係計算済）
+					result.isVisibled = sprite->_state.isVisibled;					// 非表示（親子関係計算済）
 
 					//パーツ設定
-					result.part_type = partData->type;							//パーツ種別
-					result.part_boundsType = partData->boundsType;				//当たり判定種類
-					result.part_alphaBlendType = partData->alphaBlendType;		// BlendType
+					result.part_type = partData->type;								//パーツ種別
+					result.part_boundsType = partData->boundsType;					//当たり判定種類
+					result.part_alphaBlendType = partData->alphaBlendType;			// BlendType
 					//ラベルカラー
 					std::string colorName = static_cast<const char*>(ptr(partData->colorLabel));
 					if (colorName == COLORLABELSTR_NONE)
@@ -2240,8 +2143,9 @@ bool Player::getPartState(ResluteState& result, const char* name, int frameNo)
 			}
 		}
 	}
-	return (rc);
+	return rc;
 }
+
 
 //ラベル名からラベルの設定されているフレームを取得
 //ラベルが存在しない場合は戻り値が-1となります。
@@ -2251,8 +2155,6 @@ int Player::getLabelToFrame(char* findLabelName)
 	int rc = -1;
 
 	ToPointer ptr(_currentRs->data);
-
-	const AnimePackData* packData = _currentAnimeRef->animePackData;
 	const AnimationData* animeData = _currentAnimeRef->animationData;
 
 	if (!animeData->labelData) return -1;
@@ -2284,8 +2186,10 @@ int Player::getLabelToFrame(char* findLabelName)
 	return (rc);
 }
 
-//パーツ名からパーツの表示、非表示を設定します
-void Player::setPartVisible( std::string partsname, bool flg)
+//特定パーツの表示、非表示を設定します
+//パーツ番号はスプライトスタジオのフレームコントロールに配置されたパーツが
+//プライオリティでソートされた後、上に配置された順にソートされて決定されます。
+void Player::setPartVisible(std::string partsname, bool flg)
 {
 	bool rc = false;
 	if (_currentAnimeRef)
@@ -2362,13 +2266,6 @@ void Player::setPartCell(std::string partsname, std::string sscename, std::strin
 	}
 }
 
-// setContentScaleFactorの数値に合わせて内部のUV補正を有効にするか設定します。
-// 専用解像度のテクスチャを用意する場合はfalseにしてください。
-void Player::setContentScaleEneble(bool eneble)
-{
-	_isContentScaleFactorAuto = eneble;
-}
-
 // インスタンスパーツが再生するアニメを変更します。
 bool Player::changeInstanceAnime(std::string partsname, std::string animename, bool overWrite, Instance keyParam)
 {
@@ -2390,11 +2287,11 @@ bool Player::changeInstanceAnime(std::string partsname, std::string animename, b
 			if (strcmp(partName, partsname.c_str()) == 0)
 			{
 				CustomSprite* sprite = static_cast<CustomSprite*>(_parts.at(partIndex));
-				if ( sprite->_ssplayer )
+				if (sprite->_ssplayer)
 				{
 					//パーツがインスタンスパーツの場合は再生するアニメを設定する
 					//アニメが入れ子にならないようにチェックする
-					if (_currentAnimename != animename )
+					if (_currentAnimename != animename)
 					{
 						sprite->_ssplayer->play(animename);
 						sprite->_ssplayer->setInstanceParam(overWrite, keyParam);	//インスタンスパラメータの設定
@@ -2409,9 +2306,8 @@ bool Player::changeInstanceAnime(std::string partsname, std::string animename, b
 		}
 	}
 
-	return ( rc );
+	return (rc);
 }
-
 //インスタンスパラメータを設定します
 void Player::setInstanceParam(bool overWrite, Instance keyParam)
 {
@@ -2426,7 +2322,6 @@ void Player::getInstanceParam(bool *overWrite, Instance *keyParam)
 	*keyParam = _instanseParam;			//インスタンスパラメータ
 }
 
-
 //アニメーションの色成分を変更します
 void Player::setColor(int r, int g, int b)
 {
@@ -2435,62 +2330,11 @@ void Player::setColor(int r, int g, int b)
 	_col_b = b;
 }
 
-//オフスクリーンレンダリングを有効にします。
-void Player::offScreenRenderingEnable(bool enable, float width, float height, float pivotX, float pivotY)
-{
-	if (_currentAnimeRef)
-	{
-		if (_offScreentexture)
-		{
-			_offScreentexture->removeFromParentAndCleanup(true);
-			_offScreentexture = nullptr;
-			_offScreenWidth = 0.0f;
-			_offScreenHeight = 0.0f;
-			_offScreenPivotX = 0.0f;
-			_offScreenPivotY = 0.0f;
-		}
-		if (enable == true)
-		{
-			//オフスクリーンレンダリングテクスチャを作成
-			if (width == 0.0f)
-			{
-				width = _currentAnimeRef->animationData->canvasSizeW;
-			}
-			if (height == 0.0f)
-			{
-				height = _currentAnimeRef->animationData->canvasSizeH;
-			}
-			if (pivotX == -1000.0f)
-			{
-				pivotX = _currentAnimeRef->animationData->canvasPvotX;
-			}
-			if (pivotY == -1000.0f)
-			{
-				pivotY = _currentAnimeRef->animationData->canvasPvotY;
-			}
-			_offScreenWidth = width;
-			_offScreenHeight = height;
-			_offScreenPivotX = pivotX;
-			_offScreenPivotY = pivotY;
-			_offScreentexture = SSRenderTexture::create(width, height);
-			cocos2d::Texture2D::TexParams texParams;
-			texParams.wrapS = GL_CLAMP_TO_EDGE;
-			texParams.wrapT = GL_CLAMP_TO_EDGE;
-			texParams.minFilter = GL_NEAREST;
-			texParams.magFilter = GL_NEAREST;
-			_offScreentexture->getSprite()->getTexture()->setTexParameters(texParams);
-
-			addChild(_offScreentexture);
-			_offScreentexture->setVisible(true);
-		}
-	}
-}
-
 //アニメーションのループ範囲を設定します
 void Player::setStartFrame(int frame)
 {
 	_startFrameOverWrite = frame;	//開始フレームの上書き設定
-									//現在フレームより後の場合は先頭フレームに設定する
+	//現在フレームより後の場合は先頭フレームに設定する
 	if (getFrameNo() < frame)
 	{
 		setFrameNo(frame);
@@ -2516,12 +2360,6 @@ void Player::setEndFrameToLabelName(char *findLabelName)
 	setEndFrame(frame);
 }
 
-void Player::setParentMatrix(cocos2d::Mat4 mat, bool use)
-{
-	_parentMat =  mat;						//
-	_parentMatUse = use;					//プレイヤーが持つ継承されたマトリクスがあるか？
-}
-
 //スプライト情報の取得
 CustomSprite* Player::getSpriteData(int partIndex)
 {
@@ -2536,6 +2374,20 @@ CustomSprite* Player::getSpriteData(int partIndex)
 	return(sprite);
 }
 
+/*
+* 表示を行うパーツ数を取得します
+*/
+int Player::getDrawSpriteCount(void)
+{
+	return (_draw_count);
+}
+
+void Player::setParentMatrix(float* mat, bool use )
+{
+	memcpy(_parentMat, mat, sizeof(float) * 16);	//
+	_parentMatUse = use;					//プレイヤーが持つ継承されたマトリクスがあるか？
+}
+
 void Player::setFrame(int frameNo, float dt)
 {
 	if (!_currentAnimeRef) return;
@@ -2545,25 +2397,22 @@ void Player::setFrame(int frameNo, float dt)
 	{
 		// フリップに変化があったときは必ず描画を更新する
 		CustomSprite* root = static_cast<CustomSprite*>(_parts.at(0));
-		float scaleX = isFlippedX() ? -1.0f : 1.0f;
-		float scaleY = isFlippedY() ? -1.0f : 1.0f;
-		root->setStateValue(root->_state.scaleX, scaleX);
-		root->setStateValue(root->_state.scaleY, scaleY);
+		float scaleX = root->isFlippedX() ? -1.0f : 1.0f;
+		float scaleY = root->isFlippedY() ? -1.0f : 1.0f;
+		root->setStateValue(root->_state.x, scaleX);
+		root->setStateValue(root->_state.y, scaleY);
 		forceUpdate = root->_isStateChanged;
 	}
 	
 	// 前回の描画フレームと同じときはスキップ
 	//インスタンスアニメがあるので毎フレーム更新するためコメントに変更
-//	if (!forceUpdate && frameNo == _prevDrawFrameNo) return;
+	//	if (!forceUpdate && frameNo == _prevDrawFrameNo) return;
+
 	_maskIndexList.clear();
 
 	ToPointer ptr(_currentRs->data);
 
 	const AnimePackData* packData = _currentAnimeRef->animePackData;
-	//プレイヤーが再生できるパーツの最大数を超えたアニメーションを再生している。
-	//SS6Player.hに記載されている定数 #define PART_VISIBLE_MAX (xxx) の数値を編集してください。
-	CCASSERT(packData->numParts < PART_VISIBLE_MAX, "Change #define PART_VISIBLE_MAX");
-
 	const PartData* parts = static_cast<const PartData*>(ptr(packData->parts));
 
 	const AnimationData* animeData = _currentAnimeRef->animationData;
@@ -2571,11 +2420,11 @@ void Player::setFrame(int frameNo, float dt)
 	
 	const ss_u16* frameDataArray = static_cast<const ss_u16*>(ptr(frameDataIndex[frameNo]));
 	DataArrayReader reader(frameDataArray);
-
+	
 	const AnimationInitialData* initialDataList = static_cast<const AnimationInitialData*>(ptr(animeData->defaultData));
 
+
 	State state;
-	cocos2d::V3F_C4B_T2F_Quad tempQuad;
 
 	for (int index = 0; index < packData->numParts; index++)
 	{
@@ -2584,48 +2433,64 @@ void Player::setFrame(int frameNo, float dt)
 		const AnimationInitialData* init = &initialDataList[partIndex];
 
 		// optional parameters
-		int flags = reader.readU32();
-		int cellIndex = flags & PART_FLAG_CELL_INDEX ? reader.readS16() : init->cellIndex;
-		float x = flags & PART_FLAG_POSITION_X ? reader.readFloat() : init->positionX;
-		float y = flags & PART_FLAG_POSITION_Y ? reader.readFloat() : init->positionY;
-		float z = flags & PART_FLAG_POSITION_Z ? reader.readFloat() : init->positionZ;
-		float pivotX = flags & PART_FLAG_PIVOT_X ? reader.readFloat() : init->pivotX;
-		float pivotY = flags & PART_FLAG_PIVOT_Y ? -reader.readFloat() : -init->pivotY;		//cocosでは上下が逆なので反転する
-		float rotationX = flags & PART_FLAG_ROTATIONX ? -reader.readFloat() : -init->rotationX;
-		float rotationY = flags & PART_FLAG_ROTATIONY ? -reader.readFloat() : -init->rotationY;
-		float rotationZ = flags & PART_FLAG_ROTATIONZ ? -reader.readFloat() : -init->rotationZ;
-		float scaleX = flags & PART_FLAG_SCALE_X ? reader.readFloat() : init->scaleX;
-		float scaleY = flags & PART_FLAG_SCALE_Y ? reader.readFloat() : init->scaleY;
-		float localscaleX = flags & PART_FLAG_LOCALSCALE_X ? reader.readFloat() : init->localscaleX;
-		float localscaleY = flags & PART_FLAG_LOCALSCALE_Y ? reader.readFloat() : init->localscaleY;
-		int opacity = flags & PART_FLAG_OPACITY ? reader.readU16() : init->opacity;
-		int localopacity = flags & PART_FLAG_LOCALOPACITY ? reader.readU16() : init->localopacity;
-		float size_X = flags & PART_FLAG_SIZE_X ? reader.readFloat() : init->size_X;
-		float size_Y = flags & PART_FLAG_SIZE_Y ? reader.readFloat() : init->size_Y;
-		float uv_move_X = flags & PART_FLAG_U_MOVE ? reader.readFloat() : init->uv_move_X;
-		float uv_move_Y = flags & PART_FLAG_V_MOVE ? reader.readFloat() : init->uv_move_Y;
-		float uv_rotation = flags & PART_FLAG_UV_ROTATION ? reader.readFloat() : init->uv_rotation;
-		float uv_scale_X = flags & PART_FLAG_U_SCALE ? reader.readFloat() : init->uv_scale_X;
-		float uv_scale_Y = flags & PART_FLAG_V_SCALE ? reader.readFloat() : init->uv_scale_Y;
-		float boundingRadius = flags & PART_FLAG_BOUNDINGRADIUS ? reader.readFloat() : init->boundingRadius;
-		float masklimen = flags & PART_FLAG_MASK ? reader.readU16() : init->masklimen;
-		float priority = flags & PART_FLAG_PRIORITY ? reader.readU16() : init->priority;
+		int flags				= reader.readU32();
+		int cellIndex			= flags & PART_FLAG_CELL_INDEX ? reader.readS16() : init->cellIndex;
+		float x					= flags & PART_FLAG_POSITION_X ? reader.readFloat() : init->positionX;
+		float y					= flags & PART_FLAG_POSITION_Y ? reader.readFloat() : init->positionY;
+		if (_direction == PLUS_DOWN)	//Y座標反転
+		{
+			y = -y;
+		}
+		float z					= flags & PART_FLAG_POSITION_Z ? reader.readFloat() : init->positionZ;
+		float pivotX			= flags & PART_FLAG_PIVOT_X ? reader.readFloat() : init->pivotX;
+		float pivotY			= flags & PART_FLAG_PIVOT_Y ? reader.readFloat() : init->pivotY;
+		if (_direction == PLUS_DOWN)	//Y座標反転
+		{
+			pivotY = -pivotY;
+		}
+		float rotationX			= flags & PART_FLAG_ROTATIONX ? reader.readFloat() : init->rotationX;
+		float rotationY			= flags & PART_FLAG_ROTATIONY ? reader.readFloat() : init->rotationY;
+		float rotationZ			= flags & PART_FLAG_ROTATIONZ ? reader.readFloat() : init->rotationZ;
+		if (_direction == PLUS_DOWN)	//Y座標反転
+		{
+			rotationX = -rotationX;
+			rotationY = -rotationY;
+			rotationZ = -rotationZ;
+		}
+		float scaleX			= flags & PART_FLAG_SCALE_X ? reader.readFloat() : init->scaleX;
+		float scaleY			= flags & PART_FLAG_SCALE_Y ? reader.readFloat() : init->scaleY;
+		float localscaleX		= flags & PART_FLAG_LOCALSCALE_X ? reader.readFloat() : init->localscaleX;
+		float localscaleY		= flags & PART_FLAG_LOCALSCALE_Y ? reader.readFloat() : init->localscaleY;
+		int opacity				= flags & PART_FLAG_OPACITY ? reader.readU16() : init->opacity;
+		int localopacity		= flags & PART_FLAG_LOCALOPACITY ? reader.readU16() : init->localopacity;
+		float size_X			= flags & PART_FLAG_SIZE_X ? reader.readFloat() : init->size_X;
+		float size_Y			= flags & PART_FLAG_SIZE_Y ? reader.readFloat() : init->size_Y;
+		float uv_move_X			= flags & PART_FLAG_U_MOVE ? reader.readFloat() : init->uv_move_X;
+		float uv_move_Y			= flags & PART_FLAG_V_MOVE ? reader.readFloat() : init->uv_move_Y;
+		float uv_rotation		= flags & PART_FLAG_UV_ROTATION ? reader.readFloat() : init->uv_rotation;
+		float uv_scale_X		= flags & PART_FLAG_U_SCALE ? reader.readFloat() : init->uv_scale_X;
+		float uv_scale_Y		= flags & PART_FLAG_V_SCALE ? reader.readFloat() : init->uv_scale_Y;
+		float boundingRadius	= flags & PART_FLAG_BOUNDINGRADIUS ? reader.readFloat() : init->boundingRadius;
+		float masklimen			= flags & PART_FLAG_MASK ? reader.readU16() : init->masklimen;
+		float priority			= flags & PART_FLAG_PRIORITY ? reader.readU16() : init->priority;
 
 		//インスタンスアトリビュート
-		int		instanceValue_curKeyframe = flags & PART_FLAG_INSTANCE_KEYFRAME ? reader.readS32() : init->instanceValue_curKeyframe;
-		int		instanceValue_startFrame = flags & PART_FLAG_INSTANCE_KEYFRAME ? reader.readS32() : init->instanceValue_startFrame;
-		int		instanceValue_endFrame = flags & PART_FLAG_INSTANCE_KEYFRAME ? reader.readS32() : init->instanceValue_endFrame;
-		int		instanceValue_loopNum = flags & PART_FLAG_INSTANCE_KEYFRAME ? reader.readS32() : init->instanceValue_loopNum;
-		float	instanceValue_speed = flags & PART_FLAG_INSTANCE_KEYFRAME ? reader.readFloat() : init->instanceValue_speed;
-		int		instanceValue_loopflag = flags & PART_FLAG_INSTANCE_KEYFRAME ? reader.readS32() : init->instanceValue_loopflag;
+		int		instanceValue_curKeyframe	= flags & PART_FLAG_INSTANCE_KEYFRAME ? reader.readS32() : init->instanceValue_curKeyframe;
+		int		instanceValue_startFrame	= flags & PART_FLAG_INSTANCE_KEYFRAME ? reader.readS32() : init->instanceValue_startFrame;
+		int		instanceValue_endFrame		= flags & PART_FLAG_INSTANCE_KEYFRAME ? reader.readS32() : init->instanceValue_endFrame;
+		int		instanceValue_loopNum		= flags & PART_FLAG_INSTANCE_KEYFRAME ? reader.readS32() : init->instanceValue_loopNum;
+		float	instanceValue_speed			= flags & PART_FLAG_INSTANCE_KEYFRAME ? reader.readFloat() : init->instanceValue_speed;
+		int		instanceValue_loopflag		= flags & PART_FLAG_INSTANCE_KEYFRAME ? reader.readS32() : init->instanceValue_loopflag;
 		//エフェクトアトリビュート
-		int		effectValue_curKeyframe = flags & PART_FLAG_EFFECT_KEYFRAME ? reader.readS32() : init->effectValue_curKeyframe;
-		int		effectValue_startTime = flags & PART_FLAG_EFFECT_KEYFRAME ? reader.readS32() : init->effectValue_startTime;
-		float	effectValue_speed = flags & PART_FLAG_EFFECT_KEYFRAME ? reader.readFloat() : init->effectValue_speed;
-		int		effectValue_loopflag = flags & PART_FLAG_EFFECT_KEYFRAME ? reader.readS32() : init->effectValue_loopflag;
+		int		effectValue_curKeyframe		= flags & PART_FLAG_EFFECT_KEYFRAME ? reader.readS32() : init->effectValue_curKeyframe;
+		int		effectValue_startTime		= flags & PART_FLAG_EFFECT_KEYFRAME ? reader.readS32() : init->effectValue_startTime;
+		float	effectValue_speed			= flags & PART_FLAG_EFFECT_KEYFRAME ? reader.readFloat() : init->effectValue_speed;
+		int		effectValue_loopflag		= flags & PART_FLAG_EFFECT_KEYFRAME ? reader.readS32() : init->effectValue_loopflag;
+
 
 		bool flipX = (bool)(flags & PART_FLAG_FLIP_H);
 		bool flipY = (bool)(flags & PART_FLAG_FLIP_V);
+
 		bool isVisibled = !(flags & PART_FLAG_INVISIBLE);
 
 		if (_partVisible[index] == false)
@@ -2633,7 +2498,6 @@ void Player::setFrame(int frameNo, float dt)
 			//ユーザーが任意に非表示としたパーツは非表示に設定
 			isVisibled = false;
 		}
-
 		if (_cellChange[index] != -1)
 		{
 			//ユーザーがセルを上書きした
@@ -2642,21 +2506,16 @@ void Player::setFrame(int frameNo, float dt)
 
 		_partIndex[index] = partIndex;
 
-		//オフスクリーンレンダリング時はrootパーツの位置を画面の中央に移動させる
-		if (_offScreentexture)
+		if ( _state.flipX == true )
 		{
-			if (partIndex == 0)
-			{
-				x += _offScreenWidth * (_offScreenPivotX + 0.5f);
-				y += _offScreenHeight * (_offScreenPivotY + 0.5f);
-			}
+			//プレイヤーのXフリップ
+			flipX = !flipX;	//フラグ反転
 		}
-
-
-		//インスタンスパーツのパラメータを加える
-		//不透明度はすでにコンバータで親の透明度が計算されているため
-		//全パーツにインスタンスの透明度を加える必要がある
-		opacity = (opacity * _InstanceAlpha) / 255;
+		if (_state.flipY == true)
+		{
+			//プレイヤーのYフリップ
+			flipY = !flipY;	//フラグ反転
+		}
 
 		//セルの原点設定を反映させる
 		CellRef* cellRef = cellIndex >= 0 ? _currentRs->cellCache->getReference(cellIndex) : nullptr;
@@ -2670,6 +2529,11 @@ void Player::setFrame(int frameNo, float dt)
 			cpy = cellRef->cell->pivot_Y;
 			if (flipY) cpy = -cpy;	// 垂直フリップによって原点を入れ替える
 
+			if (_direction == PLUS_DOWN)	//Y座標反転
+			{
+				cpy = -cpy;
+			}
+
 			pivotX += cpx;
 			pivotY += cpy;
 
@@ -2682,7 +2546,7 @@ void Player::setFrame(int frameNo, float dt)
 		{
 			CustomSprite* blendSprite = _motionBlendPlayer->getSpriteData(partIndex);
 			if (blendSprite)
-			{
+			{ 
 				float percent = _blendTime / _blendTimeMax;
 				x = parcentVal(x, blendSprite->_orgState.x, percent);
 				y = parcentVal(y, blendSprite->_orgState.y, percent);
@@ -2692,6 +2556,7 @@ void Player::setFrame(int frameNo, float dt)
 				rotationY = parcentValRot(rotationY, blendSprite->_orgState.rotationY, percent);
 				rotationZ = parcentValRot(rotationZ, blendSprite->_orgState.rotationZ, percent);
 			}
+
 		}
 
 		//ステータス保存
@@ -2725,9 +2590,6 @@ void Player::setFrame(int frameNo, float dt)
 		state.isVisibled = isVisibled;
 		state.flipX = flipX;
 		state.flipY = flipY;
-		state.instancerotationX = _InstanceRotX;
-		state.instancerotationY = _InstanceRotY;
-		state.instancerotationZ = _InstanceRotZ;
 
 		state.instanceValue_curKeyframe = instanceValue_curKeyframe;
 		state.instanceValue_startFrame = instanceValue_startFrame;
@@ -2740,138 +2602,104 @@ void Player::setFrame(int frameNo, float dt)
 		state.effectValue_speed = effectValue_speed;
 		state.effectValue_loopflag = effectValue_loopflag;
 
-		CustomSprite* sprite = static_cast<CustomSprite*>(_parts.at(partIndex));
-/*
-		//表示設定
-		if (opacity == 0)
-		{
-			//不透明度0の時は非表示にする
-			isVisibled = false;
-		}
-*/
-		sprite->setLocalZOrder(index);
+		state.Calc_rotationX = state.rotationX;
+		state.Calc_rotationY = state.rotationY;
+		state.Calc_rotationZ = state.rotationZ;
+		state.Calc_scaleX = state.scaleX;
+		state.Calc_scaleY = state.scaleY;
+		state.Calc_opacity = state.opacity;
 
-		sprite->setPosition(cocos2d::Point(x, y));
-		//		sprite->setRotation(rotationZ);				// for Cocos2d-x ver 3.6
-		// for Cocos2d-x ver 3.7
-		cocos2d::Vec3 rot(rotationX, rotationY, rotationZ);
-		sprite->setRotation3D(rot);
-		// --
+		CustomSprite* sprite = static_cast<CustomSprite*>(_parts.at(partIndex));
+
+		//反転
+		//反転はUVにも反映させておくので使いやすい方で反転してください。
+		sprite->setFlippedX(flipX);
+		sprite->setFlippedY(flipY);
 
 		bool setBlendEnabled = true;
+
 		if (cellRef)
 		{
-			if (cellRef->texture)
-			{
-				sprite->setTexture(cellRef->texture);
-				sprite->setTextureRect(cellRef->rect);
-
-				if (setBlendEnabled)
-				{
-					// ブレンド方法を設定
-					// 標準状態でMIXブレンド相当になります
-					// BlendFuncの値を変更することでブレンド方法を切り替えます
-					cocos2d::BlendFunc blendFunc = sprite->getBlendFunc();
-
-					{
-						// 通常ブレンド
-						if (partData->alphaBlendType == BLEND_MIX)
-						{
-							blendFunc.src = GL_SRC_ALPHA;
-							blendFunc.dst = GL_ONE_MINUS_SRC_ALPHA;
-						}
-						// 乗算ブレンド
-						if (partData->alphaBlendType == BLEND_MUL) {
-							blendFunc.src = GL_ZERO;
-							blendFunc.dst = GL_SRC_COLOR;
-						}
-						// 加算ブレンド
-						if (partData->alphaBlendType == BLEND_ADD) {
-							blendFunc.src = GL_SRC_ALPHA;
-							blendFunc.dst = GL_ONE;
-						}
-						// 減算ブレンド
-						if (partData->alphaBlendType == BLEND_SUB) {
-							blendFunc.src = GL_ZERO;
-							blendFunc.dst = GL_ONE_MINUS_SRC_COLOR;
-						}
-						// α乗算ブレンド
-						if (partData->alphaBlendType == BLEND_MULALPHA) {
-							blendFunc.src = GL_DST_COLOR;
-							blendFunc.dst = GL_ONE_MINUS_SRC_ALPHA;
-						}
-						// スクリーン
-						if (partData->alphaBlendType == BLEND_SCREEN) {
-							blendFunc.src = GL_ONE_MINUS_DST_COLOR;
-							blendFunc.dst = GL_ONE;
-						}
-						// 除外
-						if (partData->alphaBlendType == BLEND_EXCLUSION) {
-							blendFunc.src = GL_ONE_MINUS_DST_COLOR;
-							blendFunc.dst = GL_ONE_MINUS_SRC_COLOR;
-						}
-						// 反転
-						if (partData->alphaBlendType == BLEND_INVERT) {
-							blendFunc.src = GL_ONE_MINUS_DST_COLOR;
-							blendFunc.dst = GL_ZERO;
-						}
-					}
-
-					sprite->setBlendFunc(blendFunc);
-				}
-			}
-			else
-			{
-				sprite->setTexture(nullptr);
-				sprite->setTextureRect(cocos2d::Rect());
-				//セルが無く通常パーツ、マスク、NULLパーツの時は非表示にする
-				if ((partData->type == PARTTYPE_NORMAL) || (partData->type == PARTTYPE_MASK) || (partData->type == PARTTYPE_NULL))
-				{
-					isVisibled = false;
-				}
-			}
+			//各パーツのテクスチャ情報を設定
+			state.texture = cellRef->texture;
+			state.rect = cellRef->rect;
+			state.blendfunc = partData->alphaBlendType;
 		}
 		else
 		{
-			sprite->setTexture(nullptr);
-			sprite->setTextureRect(cocos2d::Rect());
-			//セルが無く通常パーツ、ヌルパーツの時は非表示にする
-			if ((partData->type == PARTTYPE_NORMAL) || (partData->type == PARTTYPE_NULL))
+			state.texture.handle = -1;
+			//セルが無く通常パーツ、マスク、NULLパーツの時は非表示にする
+			if ((partData->type == PARTTYPE_NORMAL) || (partData->type == PARTTYPE_MASK) || (partData->type == PARTTYPE_NULL))
 			{
-				isVisibled = false;
+				state.isVisibled = false;
 			}
 		}
-//		sprite->setVisible(isVisibled);
-		sprite->setVisible(true);
-
-		sprite->setAnchorPoint(cocos2d::Point(pivotX, 1.0f - pivotY));	//cocosは下が-なので座標を反転させる
-		sprite->setFlippedX(flags & PART_FLAG_FLIP_H);
-		sprite->setFlippedY(flags & PART_FLAG_FLIP_V);
 		sprite->setOpacity(opacity);
 
-		//頂点データの取得
-		cocos2d::V3F_C4B_T2F_Quad& quad = sprite->getAttributeRef();
-		if (_isContentScaleFactorAuto == true)
+		//頂点データの設定
+		//quadにはプリミティブの座標（頂点変形を含む）、UV、カラー値が設定されます。
+		SSV3F_C4B_T2F_Quad quad;
+		memset(&quad, 0, sizeof(quad));
+		if (cellRef)
 		{
-			//ContentScaleFactor対応
-			float cScale = cocos2d::Director::getInstance()->getContentScaleFactor();
-			quad.tl.texCoords.u /= cScale;
-			quad.tr.texCoords.u /= cScale;
-			quad.bl.texCoords.u /= cScale;
-			quad.br.texCoords.u /= cScale;
-			quad.tl.texCoords.v /= cScale;
-			quad.tr.texCoords.v /= cScale;
-			quad.bl.texCoords.v /= cScale;
-			quad.br.texCoords.v /= cScale;
+			//頂点を設定する
+			float width_h = cellRef->rect.size.width / 2;
+			float height_h = cellRef->rect.size.height / 2;
+			float x1 = -width_h;
+			float y1 = -height_h;
+			float x2 = width_h;
+			float y2 = height_h;
+
+			quad.tl.vertices.x = x1;
+			quad.tl.vertices.y = y2;
+			quad.tr.vertices.x = x2;
+			quad.tr.vertices.y = y2;
+			quad.bl.vertices.x = x1;
+			quad.bl.vertices.y = y1;
+			quad.br.vertices.x = x2;
+			quad.br.vertices.y = y1;
+			if (_direction == PLUS_DOWN)	//Y座標反転
+			{
+				quad.tl.vertices.x = x1;
+				quad.tl.vertices.y = y1;
+				quad.tr.vertices.x = x2;
+				quad.tr.vertices.y = y1;
+				quad.bl.vertices.x = x1;
+				quad.bl.vertices.y = y2;
+				quad.br.vertices.x = x2;
+				quad.br.vertices.y = y2;
+			}
+
+			//UVを設定する
+			quad.tl.texCoords.u = 0;
+			quad.tl.texCoords.v = 0;
+			quad.tr.texCoords.u = 0;
+			quad.tr.texCoords.v = 0;
+			quad.bl.texCoords.u = 0;
+			quad.bl.texCoords.v = 0;
+			quad.br.texCoords.u = 0;
+			quad.br.texCoords.v = 0;
+			if (cellRef)
+			{
+				quad.tl.texCoords.u = cellRef->cell->u1;
+				quad.tl.texCoords.v = cellRef->cell->v1;
+				quad.tr.texCoords.u = cellRef->cell->u2;
+				quad.tr.texCoords.v = cellRef->cell->v1;
+				quad.bl.texCoords.u = cellRef->cell->u1;
+				quad.bl.texCoords.v = cellRef->cell->v2;
+				quad.br.texCoords.u = cellRef->cell->u2;
+				quad.br.texCoords.v = cellRef->cell->v2;
+			}
 		}
 
 		//サイズ設定
+		//頂点をサイズに合わせて変形させる
 		if (flags & PART_FLAG_SIZE_X)
 		{
 			float w = 0;
 			float center = 0;
 			w = (quad.tr.vertices.x - quad.tl.vertices.x) / 2.0f;
-			if (w != 0.0f)
+			if (w!= 0.0f)
 			{
 				center = quad.tl.vertices.x + w;
 				float scale = (size_X / 2.0f) / w;
@@ -2898,9 +2726,6 @@ void Player::setFrame(int frameNo, float dt)
 				quad.tr.vertices.y = center + (h * scale);
 			}
 		}
-		sprite->setScale(scaleX * localscaleX, scaleY * localscaleY);	//スケール設定
-
-
 		// 頂点変形のオフセット値を反映
 		if (flags & PART_FLAG_VERTEX_TRANSFORM)
 		{
@@ -2926,48 +2751,40 @@ void Player::setFrame(int frameNo, float dt)
 				quad.br.vertices.y += reader.readS16();
 			}
 		}
-
-
+		
 		//頂点情報の取得
-		GLubyte loalpha = (GLubyte)opacity;
-		if (sprite->_state.flags & PART_FLAG_LOCALOPACITY)
-		{
-			loalpha = (GLubyte)localopacity;
-		}
-		cocos2d::Color4B color4( 0xff, 0xff, 0xff, loalpha);
+		SSColor4B color4 = { 0xff, 0xff, 0xff, 0xff };
 
-		sprite->sethasPremultipliedAlpha(0);	//
-		if (cellRef)
-		{
-			if (cellRef->texture)
-			{
-				//テクスチャのカラー値を変更する
-				color4.r = color4.r * _col_r / 255;
-				color4.g = color4.g * _col_g / 255;
-				color4.b = color4.b * _col_b / 255;
-			}
-		}
+		color4.r = color4.r * _col_r / 255;
+		color4.g = color4.g * _col_g / 255;
+		color4.b = color4.b * _col_b / 255;
+
 		quad.tl.colors =
 		quad.tr.colors =
 		quad.bl.colors =
 		quad.br.colors = color4;
 
 
-		// パーツカラーの反映  
+		// パーツカラーの反映
 		if (flags & PART_FLAG_PARTS_COLOR)
 		{
 
 			int typeAndFlags = reader.readU16();
 			int funcNo = typeAndFlags & 0xff;
 			int cb_flags = (typeAndFlags >> 8) & 0xff;
-	
-			state.partsColorFunc = funcNo;  
+
+			state.partsColorFunc = funcNo;
 			state.partsColorType = cb_flags;
 
+			//制限となります。
 			if (cb_flags & VERTEX_FLAG_ONE)
 			{
 				reader.readColor(color4);
-				color4.a *= (loalpha / 255.0f);
+
+
+				color4.r = color4.r * _col_r / 255;
+				color4.g = color4.g * _col_g / 255;
+				color4.b = color4.b * _col_b / 255;
 
 				quad.tl.colors =
 				quad.tr.colors =
@@ -2979,25 +2796,21 @@ void Player::setFrame(int frameNo, float dt)
 				if (cb_flags & VERTEX_FLAG_LT)
 				{
 					reader.readColor(color4);
-					color4.a *= (loalpha / 255.0f);
 					quad.tl.colors = color4;
 				}
 				if (cb_flags & VERTEX_FLAG_RT)
 				{
 					reader.readColor(color4);
-					color4.a *= (loalpha / 255.0f);
 					quad.tr.colors = color4;
 				}
 				if (cb_flags & VERTEX_FLAG_LB)
 				{
 					reader.readColor(color4);
-					color4.a *= (loalpha / 255.0f);
 					quad.bl.colors = color4;
 				}
 				if (cb_flags & VERTEX_FLAG_RB)
 				{
 					reader.readColor(color4);
-					color4.a *= (loalpha / 255.0f);
 					quad.br.colors = color4;
 				}
 			}
@@ -3026,45 +2839,20 @@ void Player::setFrame(int frameNo, float dt)
 		float u_code = 1;
 		float v_code = 1;
 
+		//UVを作成、反転の結果UVが反転する
+		u_wide = (quad.tr.texCoords.u - quad.tl.texCoords.u) / 2.0f;
+		u_center = quad.tl.texCoords.u + u_wide;
 		if (flags & PART_FLAG_FLIP_H)
 		{
-			//左右反転を行う場合はテクスチャUVを逆にする
-			u_wide = (quad.tl.texCoords.u - quad.tr.texCoords.u) / 2.0f;
-			u_center = quad.tr.texCoords.u + u_wide;
+			//左右反転を行う場合は符号を逆にする
 			u_code = -1;
 		}
-		else
-		{
-			u_wide = (quad.tr.texCoords.u - quad.tl.texCoords.u) / 2.0f;
-			u_center = quad.tl.texCoords.u + u_wide;
-		}
+		v_height = (quad.bl.texCoords.v - quad.tl.texCoords.v) / 2.0f;
+		v_center = quad.tl.texCoords.v + v_height;
 		if (flags & PART_FLAG_FLIP_V)
 		{
-			//左右反転を行う場合はテクスチャUVを逆にする
-			v_height = (quad.tl.texCoords.v - quad.bl.texCoords.v) / 2.0f;
-			v_center = quad.bl.texCoords.v + v_height;
+			//上下反転を行う場合はテクスチャUVを逆にする
 			v_code = -1;
-		}
-		else
-		{
-			v_height = (quad.bl.texCoords.v - quad.tl.texCoords.v) / 2.0f;
-			v_center = quad.tl.texCoords.v + v_height;
-		}
-
-		//UVスケール
-		if (flags & PART_FLAG_U_SCALE)
-		{
-			quad.tl.texCoords.u = u_center - (u_wide * uv_scale_X * u_code);
-			quad.tr.texCoords.u = u_center + (u_wide * uv_scale_X * u_code);
-			quad.bl.texCoords.u = u_center - (u_wide * uv_scale_X * u_code);
-			quad.br.texCoords.u = u_center + (u_wide * uv_scale_X * u_code);
-		}
-		if (flags & PART_FLAG_V_SCALE)
-		{
-			quad.tl.texCoords.v = v_center - (v_height * uv_scale_Y * v_code);
-			quad.tr.texCoords.v = v_center - (v_height * uv_scale_Y * v_code);
-			quad.bl.texCoords.v = v_center + (v_height * uv_scale_Y * v_code);
-			quad.br.texCoords.v = v_center + (v_height * uv_scale_Y * v_code);
 		}
 		//UV回転
 		if (flags & PART_FLAG_UV_ROTATION)
@@ -3075,6 +2863,25 @@ void Player::setFrame(int frameNo, float dt)
 			get_uv_rotation(&quad.bl.texCoords.u, &quad.bl.texCoords.v, u_center, v_center, uv_rotation);
 			get_uv_rotation(&quad.br.texCoords.u, &quad.br.texCoords.v, u_center, v_center, uv_rotation);
 		}
+
+		//UVスケール || 反転
+		if ((flags & PART_FLAG_U_SCALE) || (flags & PART_FLAG_FLIP_H))
+		{
+			quad.tl.texCoords.u = u_center - (u_wide * uv_scale_X * u_code);
+			quad.tr.texCoords.u = u_center + (u_wide * uv_scale_X * u_code);
+			quad.bl.texCoords.u = u_center - (u_wide * uv_scale_X * u_code);
+			quad.br.texCoords.u = u_center + (u_wide * uv_scale_X * u_code);
+		}
+		if ((flags & PART_FLAG_V_SCALE) || (flags & PART_FLAG_FLIP_V))
+		{
+			quad.tl.texCoords.v = v_center - (v_height * uv_scale_Y * v_code);
+			quad.tr.texCoords.v = v_center - (v_height * uv_scale_Y * v_code);
+			quad.bl.texCoords.v = v_center + (v_height * uv_scale_Y * v_code);
+			quad.br.texCoords.v = v_center + (v_height * uv_scale_Y * v_code);
+		}
+		state.quad = quad;
+
+
 
 
 		//インスタンスパーツの場合
@@ -3095,7 +2902,7 @@ void Player::setFrame(int frameNo, float dt)
 			bool independent = false;
 
 			int lflags = instanceValue_loopflag;
-			if (lflags & INSTANCE_LOOP_FLAG_INFINITY)
+			if (lflags & INSTANCE_LOOP_FLAG_INFINITY )
 			{
 				//無限ループ
 				infinity = true;
@@ -3134,9 +2941,8 @@ void Player::setFrame(int frameNo, float dt)
 			//独立動作の場合
 			if (independent)
 			{
-				float fdt = dt;
-				float delta = fdt / (1.0f / _animefps);						//v1.0.8	独立動作時は親アニメのfpsを使用する
-				//				float delta = fdt / (1.0f / sprite->_ssplayer->_animefps);	//v1.0.7	独立動作時はソースアニメのfpsを使用する
+				float delta = dt / (1.0f / _animefps);						//	独立動作時は親アニメのfpsを使用する
+//				float delta = fdt / (1.0f / sprite->_ssplayer->_animefps);
 
 				sprite->_liveFrame += delta;
 				time = (int)sprite->_liveFrame;
@@ -3152,12 +2958,9 @@ void Player::setFrame(int frameNo, float dt)
 
 			int inst_scale = (refEndframe - refStartframe) + 1; //インスタンスの尺
 
+
 			//尺が０もしくはマイナス（あり得ない
 			if (inst_scale <= 0) continue;
-			//changeInstanceAnime()でソースアニメの参照を変更した場合に尺が変わるので、超えてしまう場合がある。
-			//最大を超えた場合はメモリ外を参照してしまうのでアサートで止めておく
-			CCASSERT(inst_scale <= sprite->_ssplayer->_currentAnimeRef->animationData->totalFrames, "_playingFrame It has more than the length of the InstanceAnimation");
-
 			int	nowloop = (reftime / inst_scale);	//現在までのループ数
 
 			int checkloopnum = refloopNum;
@@ -3201,27 +3004,12 @@ void Player::setFrame(int frameNo, float dt)
 				//通常時
 				_time = temp_frame + refStartframe;
 			}
+
+			//インスタンスパラメータを設定
+			sprite->_ssplayer->setColor(_col_r, _col_g, _col_b);
+
 			//インスタンス用SSPlayerに再生フレームを設定する
 			sprite->_ssplayer->setFrameNo(_time);
-
-			//インスタンスパーツの親を設定のマトリクスを設定する
-			{
-//				sprite->_ssplayer->setParentMatrix(sprite->_mat, true);	//プレイヤーに対してマトリクスを設定する
-				//インスタンスパラメータを設定
-				if (sprite->_state.flags & PART_FLAG_LOCALOPACITY)
-				{
-					sprite->_ssplayer->setAlpha(sprite->_state.localopacity);
-				}
-				else
-				{
-					sprite->_ssplayer->setAlpha(sprite->_state.opacity);
-				}
-//				sprite->_ssplayer->setPosition(x, y);
-//				sprite->_ssplayer->set_InstanceRotation(rotationX, rotationY, rotationZ);
-				sprite->_ssplayer->setContentScaleEneble(_isContentScaleFactorAuto);
-				sprite->_ssplayer->setColor(_col_r, _col_g, _col_b);
-			}
-
 		}
 
 		//スプライトステータスの保存
@@ -3233,6 +3021,7 @@ void Player::setFrame(int frameNo, float dt)
 			_maskIndexList.push_back(sprite);
 		}
 	}
+
 
 	// 親に変更があるときは自分も更新するようフラグを設定する
 	for (int partIndex = 1; partIndex < packData->numParts; partIndex++)
@@ -3246,14 +3035,15 @@ void Player::setFrame(int frameNo, float dt)
 			sprite->_isStateChanged = true;
 		}
 	}
-	
+
 	// 行列の更新
-	cocos2d::Mat4 mat, t;
+	float mat[16];
+	float t[16];
 	for (int partIndex = 0; partIndex < packData->numParts; partIndex++)
 	{
 		const PartData* partData = &parts[partIndex];
 		CustomSprite* sprite = static_cast<CustomSprite*>(_parts.at(partIndex));
-		
+
 		if (sprite->_isStateChanged)
 		{
 			{
@@ -3268,38 +3058,54 @@ void Player::setFrame(int frameNo, float dt)
 				{
 					if (partIndex > 0)
 					{
+						//親のマトリクスを適用
 						CustomSprite* parent = static_cast<CustomSprite*>(_parts.at(partData->parentIndex));
-						mat = parent->_mat;
+						memcpy(mat, parent->_mat, sizeof(float) * 16);
 					}
 					else
 					{
-						mat = cocos2d::Mat4::IDENTITY;
+						IdentityMatrix(mat);
 						//rootパーツはプレイヤーからステータスを引き継ぐ
 						if (_parentMatUse == true)					//プレイヤーが持つ継承されたマトリクスがあるか？
 						{
-							mat = _parentMat;
+							memcpy(mat, _parentMat, sizeof(float) * 16);
 						}
 
-						//rootパーツの場合はプレイヤーのフリップをみてスケールを反転する
-						float scaleX = isFlippedX() ? -1.0f : 1.0f;
-						float scaleY = isFlippedY() ? -1.0f : 1.0f;
+						sprite->_state.x += _state.x;
+						sprite->_state.y += _state.y;
+						sprite->_state.rotationX += _state.rotationX;
+						sprite->_state.rotationY += _state.rotationY;
+						sprite->_state.rotationZ += _state.rotationZ;
+						sprite->_state.scaleX *= _state.scaleX;
+						sprite->_state.scaleY *= _state.scaleY;
+						//プレイヤーのフリップ
+						if (_state.flipX == true)
+						{
+							sprite->_state.scaleX = -sprite->_state.scaleX;	//フラグ反転
+						}
+						if (_state.flipY == true)
+						{
+							sprite->_state.scaleY = -sprite->_state.scaleY;	//フラグ反転
+						}
 
-						cocos2d::Mat4::createScale(scaleX, scaleY, 1.0f, &t);
-						mat = mat * t;
+						sprite->_state.Calc_rotationX = sprite->_state.rotationX;
+						sprite->_state.Calc_rotationY = sprite->_state.rotationY;
+						sprite->_state.Calc_rotationZ = sprite->_state.rotationZ;
 
+						sprite->_state.Calc_scaleX = sprite->_state.scaleX;
+						sprite->_state.Calc_scaleY = sprite->_state.scaleY;
 					}
+					TranslationMatrix(t, sprite->_state.x, sprite->_state.y, 0.0f);
+					MultiplyMatrix(t, mat, mat);
 
-					cocos2d::Mat4::createTranslation(sprite->_state.x, sprite->_state.y, 0.0f, &t);
-					mat = mat * t;
+					Matrix4RotationX(t, SSRadianToDegree(sprite->_state.rotationX));
+					MultiplyMatrix(t, mat, mat);
 
-					cocos2d::Mat4::createRotationX(CC_DEGREES_TO_RADIANS(-sprite->_state.rotationX), &t);
-					mat = mat * t;
+					Matrix4RotationY(t, SSRadianToDegree(sprite->_state.rotationY));
+					MultiplyMatrix(t, mat, mat);
 
-					cocos2d::Mat4::createRotationY(CC_DEGREES_TO_RADIANS(-sprite->_state.rotationY), &t);
-					mat = mat * t;
-
-					cocos2d::Mat4::createRotationZ(CC_DEGREES_TO_RADIANS(-sprite->_state.rotationZ), &t);
-					mat = mat * t;
+					Matrix4RotationZ(t, SSRadianToDegree(sprite->_state.rotationZ));
+					MultiplyMatrix(t, mat, mat);
 
 					float sx = sprite->_state.scaleX;
 					float sy = sprite->_state.scaleY;
@@ -3309,136 +3115,232 @@ void Player::setFrame(int frameNo, float dt)
 						sx *= sprite->_state.localscaleX;
 						sy *= sprite->_state.localscaleY;
 					}
-					cocos2d::Mat4::createScale(sx, sy, 1.0f, &t);
-					mat = mat * t;
+					ScaleMatrix(t, sx, sy, 1.0f);
+					MultiplyMatrix(t, mat, mat);
 
-					if (matcnt == 0)
+					if (matcnt > 0)
 					{
-						sprite->_mat = mat;
+						memcpy(sprite->_localmat, mat, sizeof(float) * 16);	//ローカルマトリクスを作成する
 					}
-					//ローカルスケールが使用されていない場合は継承マトリクスをローカルマトリクスに適用
-					sprite->_localmat = mat;
+					else
+					{
+						memcpy(sprite->_mat, mat, sizeof(float) * 16);		//継承マトリクスを作成する
+					}
 				}
-				sprite->_isStateChanged = false;
 
-				// 行列を再計算させる
-				sprite->setAdditionalTransform(nullptr);
-				sprite->Set_transformDirty();	//Ver 3.13.1対応
+				if (num == 1)
+				{
+					//ローカルスケールが使用されていない場合は継承マトリクスをローカルマトリクスに適用
+					memcpy(sprite->_localmat, mat, sizeof(float) * 16);
+				}
+
+				memcpy(sprite->_state.mat, sprite->_localmat, sizeof(float) * 16);	//表示にはローカルマトリクスを適用する
+
+				if (partIndex > 0)
+				{
+					CustomSprite* parent = static_cast<CustomSprite*>(_parts.at(partData->parentIndex));
+					//子供は親のステータスを引き継ぐ
+					//座標はマトリクスから取得する
+					if ((parent->_state.Calc_scaleX * parent->_state.Calc_scaleY) < 0)	//スケールのどちらかが-の場合は回転方向を逆にする
+					{
+						sprite->_state.Calc_rotationZ = -sprite->_state.Calc_rotationZ;
+					}
+					sprite->_state.Calc_rotationX += parent->_state.Calc_rotationX;
+					sprite->_state.Calc_rotationY += parent->_state.Calc_rotationY;
+					sprite->_state.Calc_rotationZ += parent->_state.Calc_rotationZ;
+
+					sprite->_state.Calc_scaleX *= parent->_state.Calc_scaleX;
+					sprite->_state.Calc_scaleY *= parent->_state.Calc_scaleY;
+
+					//ルートパーツのアルファ値を反映させる
+					sprite->_state.Calc_opacity = (sprite->_state.Calc_opacity * _state.opacity) / 255;
+					//インスタンスパーツの親を設定
+					if (sprite->_ssplayer)
+					{
+						sprite->_ssplayer->setParentMatrix( sprite->_state.mat, true );	//プレイヤーに対してマトリクスを設定する
+
+						float alpha = sprite->_state.Calc_opacity;
+						if (sprite->_state.flags & PART_FLAG_LOCALOPACITY)
+						{
+							alpha = sprite->_state.localopacity;	//ローカル不透明度対応
+						}
+
+
+						sprite->_ssplayer->setAlpha(alpha);
+					}
+
+				}
 			}
+			sprite->_isStateChanged = false;
 		}
 	}
-	if (_isPlayFirstUpdate == false)
-	{
-		// エフェクトのアップデート
-		for (int partIndex = 0; partIndex < packData->numParts; partIndex++)
-		{
-			const PartData* partData = &parts[partIndex];
-			CustomSprite* sprite = static_cast<CustomSprite*>(_parts.at(partIndex));
 
-			//エフェクトのアップデート
-			if (sprite->refEffect)
+	// 特殊パーツのアップデート
+	for (int partIndex = 0; partIndex < packData->numParts; partIndex++)
+	{
+		const PartData* partData = &parts[partIndex];
+		CustomSprite* sprite = static_cast<CustomSprite*>(_parts.at(partIndex));
+
+		//インスタンスパーツのアップデート
+		if (sprite->_ssplayer)
+		{
+			sprite->_ssplayer->update(dt);
+		}
+		//エフェクトのアップデート
+		if (sprite->refEffect)
+		{
+			sprite->refEffect->setParentSprite(sprite);
+
+			//エフェクトアトリビュート
+			int curKeyframe = sprite->_state.effectValue_curKeyframe;
+			int refStartframe = sprite->_state.effectValue_startTime;
+			float refSpeed = sprite->_state.effectValue_speed;
+			bool independent = false;
+
+			int lflags = sprite->_state.effectValue_loopflag;
+			if (lflags & EFFECT_LOOP_FLAG_INDEPENDENT)
+			{
+				independent = true;
+			}
+
+			if (sprite->effectAttrInitialized == false)
+			{
+				sprite->effectAttrInitialized = true;
+				sprite->effectTimeTotal = refStartframe;
+			}
+
+			sprite->refEffect->setParentSprite(sprite);	//親スプライトの設定
+			if (sprite->_state.isVisibled == true)
 			{
 
-				//エフェクトアトリビュート
-				int curKeyframe = sprite->_state.effectValue_curKeyframe;
-				int refStartframe = sprite->_state.effectValue_startTime;
-				float refSpeed = sprite->_state.effectValue_speed;
-				bool independent = false;
-
-				int lflags = sprite->_state.effectValue_loopflag;
-				if (lflags & EFFECT_LOOP_FLAG_INDEPENDENT)
+				if (independent)
 				{
-					independent = true;
-				}
-
-				if (sprite->effectAttrInitialized == false)
-				{
-					sprite->effectAttrInitialized = true;
-					sprite->effectTimeTotal = refStartframe;
-				}
-
-				//パーツのステータスの更新
-				sprite->partState.alpha = sprite->_state.opacity / 255.0f;
-//				int matindex = 0;
-//				for (matindex = 0; matindex < 16; matindex++)
-//				{
-//					sprite->partState.matrix[matindex] = sprite->_mat.m[matindex];
-//				}
-				sprite->refEffect->setContentScaleEneble(_isContentScaleFactorAuto);
-				sprite->refEffect->setParentSprite(sprite);	//親スプライトの設定
-
-				if (sprite->_state.isVisibled == true)
-				{
-
-					if (independent)
+					//独立動作
+					if (sprite->effectAttrInitialized)
 					{
-						//独立動作
-						if (sprite->effectAttrInitialized)
+						float delta = dt / (1.0f / _animefps);						//	独立動作時は親アニメのfpsを使用する
+						sprite->effectTimeTotal += delta * refSpeed;
+						sprite->refEffect->setLoop(true);
+						sprite->refEffect->setFrame(sprite->effectTimeTotal);
+						sprite->refEffect->play();
+						sprite->refEffect->update();
+					}
+				}
+				else 
+				{
+					{
+						float _time = frameNo - curKeyframe;
+						if (_time < 0)
 						{
-							float delta = dt / (1.0f / _animefps);						//	独立動作時は親アニメのfpsを使用する
-							sprite->effectTimeTotal += delta * refSpeed;
-							sprite->refEffect->setLoop(true);
-							sprite->refEffect->setFrame(sprite->effectTimeTotal);
+						}
+						else
+						{
+							_time *= refSpeed;
+							_time = _time + refStartframe;
+							sprite->effectTimeTotal = _time;
+
+							sprite->refEffect->setSeedOffset(_seedOffset);
+							sprite->refEffect->setFrame(_time);
 							sprite->refEffect->play();
 							sprite->refEffect->update();
 						}
 					}
-					else
-					{
-						{
-							float _time = frameNo - curKeyframe;
-							if (_time < 0)
-							{
-							}
-							else
-							{
-								_time *= refSpeed;
-								_time = _time + refStartframe;
-								sprite->effectTimeTotal = _time;
+				}
+			}
+		}
+	}
+	_prevDrawFrameNo = frameNo;	//再生したフレームを保存
+}
 
-								sprite->refEffect->setSeedOffset(_seedOffset);
-								sprite->refEffect->setFrame(_time);
-								sprite->refEffect->play();
-								sprite->refEffect->update();
+//プレイヤーの描画
+void Player::draw()
+{
+	_draw_count = 0;
+
+	if (!_currentAnimeRef) return;
+
+	SSRenderSetup();
+
+	ToPointer ptr(_currentRs->data);
+	const AnimePackData* packData = _currentAnimeRef->animePackData;
+
+
+	if (_maskFuncFlag == true) //マスク機能が有効（インスタンスのソースアニメではない）
+	{
+		//初期に適用されているマスクを精製
+		for (size_t i = 0; i < _maskIndexList.size(); i++)
+		{
+			CustomSprite* sprite = _maskIndexList[i];
+
+			if (sprite->_state.isVisibled == true)
+			{
+				//ステンシルバッファの作成
+				SSDrawSprite(sprite);
+				_draw_count++;
+			}
+		}
+	}
+	int mask_index = 0;
+
+	for (int index = 0; index < packData->numParts; index++)
+	{
+
+		int partIndex = _partIndex[index];
+		//スプライトの表示
+		CustomSprite* sprite = static_cast<CustomSprite*>(_parts.at(partIndex));
+
+		if (sprite->_state.isVisibled == true)
+		{
+			if (sprite->_ssplayer)
+			{
+				//インスタンスパーツの場合は子供のプレイヤーを再生
+				sprite->_ssplayer->draw();
+				_draw_count += sprite->_ssplayer->getDrawSpriteCount();
+			}
+			else
+			{
+				if (sprite->refEffect)
+				{ 
+					//エフェクトパーツ
+					sprite->refEffect->draw();
+					_draw_count = sprite->refEffect->getDrawSpriteCount();
+				}
+				else if (sprite->_partData.type == PARTTYPE_MASK)
+				{
+					if (_maskFuncFlag == true) //マスク機能が有効（インスタンスのソースアニメではない）
+					{
+						clearMask();
+						mask_index++;	//0番は処理しないので先にインクメントする
+
+						for (size_t i = mask_index; i < _maskIndexList.size(); i++)
+						{
+							CustomSprite* sprite2 = _maskIndexList[i];
+							if (sprite2->_state.isVisibled == true)
+							{
+								SSDrawSprite(sprite2);
+								_draw_count++;
 							}
 						}
 					}
-					sprite->refEffect->draw();
+				}
+				else
+				{
+					if (sprite->_state.texture.handle != -1)
+					{
+						SSDrawSprite(sprite);
+						_draw_count++;
+					}
 				}
 			}
-		}
-
-		//オフスクリーンレンダリング対応
-		if (_offScreentexture)
-		{
-			_sspman->setUseOffscreenRendering(true);
-			_offScreentexture->setVisible(true);
-			_offScreentexture->beginWithClear(0, 0, 0, 0);
-			for (int partIndex = 0; partIndex < packData->numParts; partIndex++)
-			{
-				CustomSprite* sprite = static_cast<CustomSprite*>(_parts.at(_partIndex[partIndex]));
-//				if (sprite->isCustomShaderProgramEnabled() == false)	//カラーブレンドの設定されたスプライトは表示しない
-				{ 
-					sprite->visit();
-				}
-				sprite->setVisible(false);
-			}
-			_offScreentexture->end();	//描画開始
-			_sspman->setUseOffscreenRendering(false);
 		}
 	}
-	_isPlayFirstUpdate = false;
-	_firstDraw = true;
-
-	_prevDrawFrameNo = frameNo;	//再生したフレームを保存
-
+	enableMask(false);
 }
 
-//ユーザーデータの取得
 void Player::checkUserData(int frameNo)
 {
 	if (!_userDataCallback) return;
-	
+
 	ToPointer ptr(_currentRs->data);
 
 	const AnimePackData* packData = _currentAnimeRef->animePackData;
@@ -3518,38 +3420,38 @@ void Player::checkUserData(int frameNo)
 		_userData.frameNo = frameNo;
 		
 		_userDataCallback(this, &_userData);
+//		SSonUserData(this, &_userData);
 	}
-}
-
-#define __PI__	(3.14159265358979323846f)
-#define RadianToDegree(Radian) ((double)Radian * (180.0f / __PI__))
-#define DegreeToRadian(Degree) ((double)Degree * (__PI__ / 180.0f))
-
-void Player::get_uv_rotation(float *u, float *v, float cu, float cv, float deg)
-{
-	float dx = *u - cu; // 中心からの距離(X)
-	float dy = *v - cv; // 中心からの距離(Y)
-
-	float tmpX = ( dx * cosf(DegreeToRadian(deg)) ) - ( dy * sinf(DegreeToRadian(deg)) ); // 回転
-	float tmpY = ( dx * sinf(DegreeToRadian(deg)) ) + ( dy * cosf(DegreeToRadian(deg)) );
-
-	*u = (cu + tmpX); // 元の座標にオフセットする
-	*v = (cv + tmpY);
 
 }
 
-//インスタンスパーツのアルファ値を設定
-void  Player::setAlpha(int alpha)
+void  Player::setPosition(float x, float y)
 {
-	_InstanceAlpha = alpha;
+	_state.x = x;
+	_state.y = y;
+}
+void  Player::setRotation(float x, float y, float z)
+{
+	_state.rotationX = x;
+	_state.rotationY = y;
+	_state.rotationZ = z;
 }
 
-//インスタンスパーツの回転値を設定
-void  Player::set_InstanceRotation(float rotX, float rotY, float rotZ)
+void  Player::setScale(float x, float y)
 {
-	_InstanceRotX = rotX;
-	_InstanceRotY = rotY;
-	_InstanceRotZ = rotZ;
+	_state.scaleX = x;
+	_state.scaleY = y;
+}
+
+void  Player::setAlpha(int a)
+{
+	_state.opacity = a;
+}
+
+void  Player::setFlip(bool flipX, bool flipY)
+{
+	_state.flipX = flipX;
+	_state.flipY = flipY;
 }
 
 //割合に応じた中間値を取得します
@@ -3615,100 +3517,48 @@ void Player::setMaskParentSetting(bool flg)
 	_maskParentSetting = flg;
 }
 
+void Player::setUserDataCallback(const UserDataCallback& callback)
+{
+	_userDataCallback = callback;
+}
+
+void Player::setPlayEndCallback(const PlayEndCallback& callback)
+{
+	_playEndCallback = callback;
+}
+
 /**
  * CustomSprite
  */
-void execMask(CustomSprite* sprite);
-void clearMask();
-void enableMask(bool flag);
-void renderSetup();
-void maskEnd(CustomSprite* sprite);
-
-static const GLchar * ssPositionTextureColor_frag =
-#include "ssShader_frag.h"
-
-CustomSprite::CustomSprite()
-	: _defaultShaderProgram(nullptr)
-	, _opacity(1.0f)
+CustomSprite::CustomSprite():
+	  _opacity(1.0f)
 	, _liveFrame(0.0f)
 	, _hasPremultipliedAlpha(0)
 	, refEffect(0)
 	, _ssplayer(0)
-	, effectAttrInitialized(false)
-	, effectTimeTotal(0)
+	,effectAttrInitialized(false)
+	,effectTimeTotal(0)
 	, _maskInfluence(true)
-	, _parentPlayer(nullptr)
-	, _isEffectSprite(false)
-
 {
 }
 
 CustomSprite::~CustomSprite()
 {
 	//エフェクトクラスがある場合は解放する
-	if (refEffect)
-	{
-		delete refEffect;
-		refEffect = 0;
-	}
+	SS_SAFE_DELETE(refEffect);
+	SS_SAFE_DELETE(_ssplayer);
 }
 
 CustomSprite* CustomSprite::create()
 {
 	CustomSprite *pSprite = new CustomSprite();
-	if (pSprite && pSprite->init())
+	if (pSprite)
 	{
 		pSprite->initState();
-		pSprite->setDefaultShaderProgram();
-		pSprite->autorelease();
 		return pSprite;
 	}
-	CC_SAFE_DELETE(pSprite);
-	return nullptr;
-}
-
-cocos2d::GLProgram* CustomSprite::getCustomShaderProgram()
-{
-	using namespace cocos2d;
-
-	static GLProgram* p = nullptr;
-	static bool constructFailed = false;
-	if (!p && !constructFailed)
-	{
-		p = new GLProgram();
-		p->initWithByteArrays(
-			ccPositionTextureColor_vert,
-			ssPositionTextureColor_frag);
-		p->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_POSITION, GLProgram::VERTEX_ATTRIB_POSITION);
-		p->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_COLOR, GLProgram::VERTEX_ATTRIB_COLOR);
-		p->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_TEX_COORD, GLProgram::VERTEX_ATTRIB_TEX_COORDS);
-
-		if (!p->link())
-		{
-			constructFailed = true;
-			return nullptr;
-		}
-
-		p->updateUniforms();
-
-	}
-	return p;
-}
-
-void CustomSprite::setDefaultShaderProgram( void )
-{
-	_defaultShaderProgram = getGLProgram();
-	cocos2d::GLProgram *shaderProgram = getCustomShaderProgram();
-	if (shaderProgram == nullptr)
-	{
-		// Not use custom shader.
-		shaderProgram = _defaultShaderProgram;
-	}
-	_customShaderProgram = shaderProgram;
-	this->setGLProgram(_customShaderProgram);
-
-//	_defaultShaderProgram = getGLProgram();
-//	this->setGLProgram(_defaultShaderProgram);
+	SS_SAFE_DELETE(pSprite);
+	return NULL;
 }
 
 void CustomSprite::sethasPremultipliedAlpha(int PremultipliedAlpha)
@@ -3716,515 +3566,27 @@ void CustomSprite::sethasPremultipliedAlpha(int PremultipliedAlpha)
 	_hasPremultipliedAlpha = PremultipliedAlpha;
 }
 
-cocos2d::V3F_C4B_T2F_Quad& CustomSprite::getAttributeRef()
+void CustomSprite::setOpacity(unsigned char opacity)
 {
-	return _quad;
-}
-
-void CustomSprite::setOpacity(GLubyte opacity)
-{
-	cocos2d::Sprite::setOpacity(opacity);
 	_opacity = static_cast<float>(opacity) / 255.0f;
 }
 
-const cocos2d::Mat4& CustomSprite::getNodeToParentTransform() const
+void CustomSprite::setFlippedX(bool flip)
 {
-    if (_transformDirty)
-    {
-		// 自身の行列を更新
-		Sprite::getNodeToParentTransform();
-		
-		// 更に親の行列に掛け合わせる
-		if (_parent != nullptr)
-		{
-			cocos2d::Mat4 mat = _parent->_mat;
-			mat = mat * _transform;
-			_transform = mat;
-		}
-	}
-	return _transform;
+	_flipX = flip;
 }
-
-
-/**
-パーツカラー用
-ブレンドタイプに応じたテクスチャコンバイナの設定を行う
-
-ミックスのみコンスタント値を使う。
-他は事前に頂点カラーに対してブレンド率を掛けておく事でαも含めてブレンドに対応している。
-*/
-void CustomSprite::setupPartsColorTextureCombiner(BlendType blendType, VertexFlag colorBlendTarget)
+void CustomSprite::setFlippedY(bool flip)
 {
-	using namespace cocos2d;
-
-	//static const float oneColor[4] = {1.f,1.f,1.f,1.f};
-	float constColor[4] = { 0.5f,0.5f,0.5f,1.0f };
-	static const GLuint funcs[] = { GL_INTERPOLATE, GL_MODULATE, GL_ADD, GL_SUBTRACT };
-	GLuint func = funcs[(int)blendType];
-	GLuint srcRGB = GL_TEXTURE0;
-	GLuint dstRGB = GL_PRIMARY_COLOR;
-
-	bool combineAlpha = true;
-
-	switch (blendType)
-	{
-	case BlendType::BLEND_MIX:
-	case BlendType::BLEND_MUL:
-	case BlendType::BLEND_ADD:
-	case BlendType::BLEND_SUB:
-		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
-		// rgb
-		glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_RGB, func);
-
-		// mix の場合、特殊
-		if (blendType == BlendType::BLEND_MIX)
-		{
-			if (colorBlendTarget == VertexFlag::VERTEX_FLAG_ONE)
-			{
-				// 全体なら、const 値で補間する
-				glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE2_RGB, GL_CONSTANT);
-				glTexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, constColor);
-			}
-			else
-			{
-				// 頂点カラーのアルファをテクスチャに対する頂点カラーの割合にする。
-				glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE2_RGB, GL_PRIMARY_COLOR);
-
-				combineAlpha = false;
-			}
-			// 強度なので 1 に近付くほど頂点カラーが濃くなるよう SOURCE0 を頂点カラーにしておく。
-			std::swap(srcRGB, dstRGB);
-		}
-		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_RGB, srcRGB);
-		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE1_RGB, dstRGB);
-		glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_RGB, GL_SRC_COLOR);
-		glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND1_RGB, GL_SRC_COLOR);
-		break;
-	case BlendType::BLEND_SCREEN:
-	case BlendType::BLEND_EXCLUSION:
-	case BlendType::BLEND_INVERT:
-	default:
-		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
-		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE1_RGB, GL_TEXTURE0);
-		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE2_RGB, GL_CONSTANT);
-		glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_RGB, GL_MODULATE);
-		break;
-	}
-
-	if (combineAlpha)
-	{
-		// alpha は常に掛け算
-		glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_ALPHA, GL_MODULATE);
-		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_ALPHA, GL_TEXTURE0);
-		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE1_ALPHA, GL_PRIMARY_COLOR);
-		glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA, GL_SRC_ALPHA);
-		glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND1_ALPHA, GL_SRC_ALPHA);
-	}
-	else
-	{
-		// ミックス＋頂点単位の場合αブレンドはできない。
-		// αはテクスチャを100%使えれば最高だが、そうはいかない。
-		glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_ALPHA, GL_REPLACE);
-		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_ALPHA, GL_TEXTURE0);
-		glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA, GL_SRC_ALPHA);
-	}
+	_flipY = flip;
 }
-
-
-void CustomSprite::draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transform, uint32_t flags)
+bool CustomSprite::isFlippedX()
 {
-	using namespace cocos2d;
-
-	//SSPManegerのエフェクトアップデートを設定
-	auto sspman = ss::SSPManager::getInstance();
-	sspman->setUpdateFlag();
-
-	if (_parentPlayer == nullptr)
-	{
-		return;
-	}
-
-	if (_parentPlayer->_firstDraw == true)
-	{
-		//マスク処理
-		if (_parentPlayer->_maskFuncFlag == true) //マスク機能が有効（インスタンスのソースアニメではない）
-		{
-			if (_parentPlayer->_maskIndexList.size() > 0)
-			{
-				renderer->render();
-				renderSetup();
-
-				//初期に適用されているマスクを精製
-				for (size_t i = 0; i < _parentPlayer->_maskIndexList.size(); i++)
-				{
-					CustomSprite* sprite = _parentPlayer->_maskIndexList[i];
-
-					//ステンシルバッファの作成
-					drawPart(sprite);
-				}
-			}
-		}
-		_parentPlayer->_mask_index = 0;	//マスクの処理数を初期化
-	}
-	_parentPlayer->_firstDraw = false;
-
-
-	if ( ( _texture == nullptr ) || ( _state.isVisibled == false ) )
-	{
-		glBindTexture(GL_TEXTURE_2D,0);
-		maskEnd(this);
-		return;
-	}
-
-
-	bool customDraw = false;	//カスタム描画を行うか？
-	if (
-		 ( (_state.flags & PART_FLAG_PARTS_COLOR) && ( _state.partsColorFunc != BlendType::BLEND_MUL ) )
-	  || (_partData.alphaBlendType == BLEND_SUB)
-	  || (_partData.type == PARTTYPE_MASK)
-		)
-	{
-		customDraw = true;	//独自に描画する
-	}
-	if (_parentPlayer->_maskIndexList.size() > 0)
-	{
-		customDraw = true;	//独自に描画する マスクは必ず自前描画
-	}
-	if (customDraw == false)
-	{
-		//本来のcocosの描画を行う
-		cocos2d::Sprite::draw(renderer, transform, flags);
-		maskEnd(this);
-		return;
-	}
-
-	CC_PROFILER_START_CATEGORY(kCCProfilerCategorySprite, "CustomSprite - draw");
-
-	//cocos v3系からspriteのdraw内でレンダーに描画コマンドを積む方式に変わったため、
-	//自前のシェーダーをcocos側に渡してパラメータを設定することが難しい。
-	//カラーブレンドスプライトは表示タイミングで、現在レンダーにたまっている描画コマンドを処理して
-	//描画してしまい直接描画することで描画順を保つことにした
-	renderer->render();
-
-	renderSetup();
-
-	if (_partData.type == PARTTYPE_MASK)
-	{
-		if (_parentPlayer->_maskFuncFlag == true) //マスク機能が有効（インスタンスのソースアニメではない）
-		{
-			clearMask();
-			_parentPlayer->_mask_index++;	//0番は処理しないので先にインクメントする
-
-			for (size_t i = _parentPlayer->_mask_index; i < _parentPlayer->_maskIndexList.size(); i++)
-			{
-				CustomSprite* sprite2 = _parentPlayer->_maskIndexList[i];
-				if (sprite2->_state.isVisibled == true)
-				{
-					drawPart(sprite2);
-				}
-			}
-		}
-	}
-	else
-	{
-		drawPart(this);
-	}
-	maskEnd(this);
-//	glFlush();
-
-	CC_PROFILER_STOP_CATEGORY(kCCProfilerCategorySprite, "CCSprite - draw");
-
+	return (_flipX);
 }
-
-void maskEnd(CustomSprite* sprite)
+bool CustomSprite::isFlippedY()
 {
-	if (sprite->_partData.index == sprite->_parentPlayer->_parts.size() - 1)
-	{
-		if (sprite->_isEffectSprite == false)
-		{
-			enableMask(false);
-		}
-	}
+	return (_flipY);
 }
-
-void renderSetup()
-{
-	glDisableClientState(GL_COLOR_ARRAY);
-	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-	glEnable(GL_BLEND);
-	glDisable(GL_DEPTH_TEST);
-	glEnable(GL_ALPHA_TEST);
-	glAlphaFunc(GL_GREATER, 0.0);
-
-	glBlendEquation(GL_FUNC_ADD);
-
-	//	glMatrixMode(GL_MODELVIEW);
-	//	glLoadIdentity();
-
-}
-
-void clearMask()
-{
-
-	glClear(GL_STENCIL_BUFFER_BIT);
-
-	enableMask(false);
-}
-
-void enableMask(bool flag)
-{
-
-	if (flag)
-	{
-		glEnable(GL_STENCIL_TEST);
-	}
-	else {
-		glDisable(GL_STENCIL_TEST);
-		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-	}
-}
-
-void execMask(CustomSprite* sprite)
-{
-
-	glEnable(GL_STENCIL_TEST);
-	if (sprite->_partData.type == PARTTYPE_MASK)
-	{
-		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-
-		if (!(sprite->_maskInfluence)) { //マスクが有効では無い＝重ね合わせる
-
-			glStencilFunc(GL_ALWAYS, 1, ~0);  //常に通過
-			glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-			//描画部分を1へ
-		}
-		else {
-			glStencilFunc(GL_ALWAYS, 1, ~0);  //常に通過
-			glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
-		}
-
-
-		glEnable(GL_ALPHA_TEST);
-
-		//この設定だと
-		//1.0fでは必ず抜けないため非表示フラグなし（＝1.0f)のときの挙動は考えたほうがいい
-
-		//不透明度からマスク閾値へ変更
-		float mask_alpha = (float)(255 - sprite->_state.masklimen) / 255.0f;
-		glAlphaFunc(GL_GREATER, mask_alpha);
-		sprite->_state.opacity = 1.0f;
-	}
-	else 
-	{
-		if ((sprite->_maskInfluence)) //パーツに対してのマスクが有効か否か
-		{
-			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-			glStencilFunc(GL_NOTEQUAL, 0x1, 0x1);  //1と等しい
-			glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-		}
-		else {
-			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-			glDisable(GL_STENCIL_TEST);
-		}
-
-		// 常に無効
-		glDisable(GL_ALPHA_TEST);
-
-	}
-
-}
-
-void CustomSprite::drawPart(CustomSprite* sprite)
-{
-	if (_texture == nullptr)
-	{
-		return;
-	}
-
-	using namespace cocos2d;
-
-	//	CCLOG("x: %f, y: %f", _quad.tl.vertices.x, _quad.tl.vertices.y);
-#define DRAW_DEBUG 0
-#if DRAW_DEBUG == 1
-	// draw bounding box
-	{
-		cocos2d::Point vertices[4] = {
-			cocos2d::Point(sprite->_quad.tl.vertices.x,sprite->_quad.tl.vertices.y),
-			cocos2d::Point(sprite->_quad.bl.vertices.x,sprite->_quad.bl.vertices.y),
-			cocos2d::Point(sprite->_quad.br.vertices.x,sprite->_quad.br.vertices.y),
-			cocos2d::Point(sprite->_quad.tr.vertices.x,sprite->_quad.tr.vertices.y),
-		};
-		ccDrawPoly(vertices, 4, true);
-	}
-#endif 
-#if DRAW_DEBUG == 2
-	// draw texture box
-	{
-		cocos2d::Size s = sprite->getTextureRect().size;
-		cocos2d::Point offsetPix = sprite->getOffsetPosition();
-		cocos2d::Point vertices[4] = {
-			cocos2d::Point(offsetPix.x,offsetPix.y), cocos2d::Point(offsetPix.x + s.width,offsetPix.y),
-			cocos2d::Point(offsetPix.x + s.width,offsetPix.y + s.height), cocos2d::Point(offsetPix.x,offsetPix.y + s.height)
-		};
-		ccDrawPoly(vertices, 4, true);
-	}
-#endif // CC_SPRITE_DEBUG_DRAW
-
-
-	if (sprite->_partData.type == PARTTYPE_MASK)
-	{
-		sprite->setGLProgram(sprite->_defaultShaderProgram);
-
-		//defaultシェーダーだとSpriteのマトリクスが適用されない
-		//シェーダーにプロジェクションマトリクスが渡せないので頂点を移動させる。
-		cocos2d::Vec3 lsv;
-		sprite->_localmat.getScale(&lsv);
-
-		float posx = sprite->_parentPlayer->getPositionX() - (sprite->_originalContentSize.width * lsv.x * sprite->_state.pivotX);
-		float posy = sprite->_parentPlayer->getPositionY() - (sprite->_originalContentSize.height * lsv.y * sprite->_state.pivotY);
-		float posz = sprite->_parentPlayer->getPositionZ();
-
-		cocos2d::Mat4 mat;
-		mat = cocos2d::Mat4::IDENTITY;
-		cocos2d::Mat4::createTranslation(posx, posy, posz, &mat);
-		mat = mat * sprite->_localmat;
-		mat.transformPoint(&sprite->_quad.bl.vertices);
-
-		mat = cocos2d::Mat4::IDENTITY;
-		cocos2d::Mat4::createTranslation(posx, posy, posz, &mat);
-		mat = mat * sprite->_localmat;
-		mat.transformPoint(&sprite->_quad.br.vertices);
-
-		mat = cocos2d::Mat4::IDENTITY;
-		cocos2d::Mat4::createTranslation(posx, posy, posz, &mat);
-		mat = mat * sprite->_localmat;
-		mat.transformPoint(&sprite->_quad.tl.vertices);
-
-		mat = cocos2d::Mat4::IDENTITY;
-		cocos2d::Mat4::createTranslation(posx, posy, posz, &mat);
-		mat = mat * sprite->_localmat;
-		mat.transformPoint(&sprite->_quad.tr.vertices);
-
-	}
-	else
-	{
-		sprite->setGLProgram(sprite->_customShaderProgram);
-	}
-
-	CC_NODE_DRAW_SETUP();
-
-	execMask(sprite);
-
-	//	GL::bindTexture2D(_texture->getName());
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, sprite->_texture->getName());
-
-	if (sprite->_partData.alphaBlendType == BLEND_SUB)
-	{
-		//減算
-		glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
-		glBlendFuncSeparateEXT(GL_SRC_ALPHA, GL_ONE, GL_ZERO, GL_DST_ALPHA);
-//		GL::blendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);	// for test
-	}
-	else
-	{
-		GL::blendFunc(sprite->_blendFunc.src, sprite->_blendFunc.dst);
-	}
-	//パーツカラー
-	if (sprite->_state.flags & PART_FLAG_PARTS_COLOR)
-	{
-		glActiveTexture(GL_TEXTURE0);
-		setupPartsColorTextureCombiner((BlendType)sprite->_state.partsColorFunc, (VertexFlag)sprite->_state.partsColorType);
-/*
-		glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_COMBINE);
-		glTexEnvi(GL_TEXTURE_ENV,GL_COMBINE_RGB,GL_ADD);
-		glTexEnvi(GL_TEXTURE_ENV,GL_SRC0_RGB,GL_PREVIOUS); 
-		glTexEnvi(GL_TEXTURE_ENV,GL_SRC1_RGB,GL_TEXTURE);
-*/
-	}
-	else
-	{
-		// カラーは１００％テクスチャ
-		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
-		glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_RGB, GL_REPLACE);
-		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_RGB, GL_TEXTURE0);
-		// αだけ合成
-		glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_ALPHA, GL_MODULATE);
-		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_ALPHA, GL_TEXTURE0);
-		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE1_ALPHA, GL_PRIMARY_COLOR);
-		glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA, GL_SRC_ALPHA);
-		glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND1_ALPHA, GL_SRC_ALPHA);
-	}
-
-	//
-	// Attributes
-	//
-
-	GL::enableVertexAttribs(GL::VERTEX_ATTRIB_FLAG_POS_COLOR_TEX);
-
-#define kQuadSize sizeof(sprite->_quad.bl)
-	long offset = (long)&sprite->_quad;
-
-	// vertex
-	int diff = offsetof(V3F_C4B_T2F, vertices);
-	glVertexAttribPointer(GLProgram::VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, kQuadSize, (void*)(offset + diff));
-
-	// texCoods
-	diff = offsetof(V3F_C4B_T2F, texCoords);
-	glVertexAttribPointer(GLProgram::VERTEX_ATTRIB_TEX_COORD, 2, GL_FLOAT, GL_FALSE, kQuadSize, (void*)(offset + diff));
-
-	// color
-	diff = offsetof(V3F_C4B_T2F, colors);
-	glVertexAttribPointer(GLProgram::VERTEX_ATTRIB_COLOR, 4, GL_UNSIGNED_BYTE, GL_TRUE, kQuadSize, (void*)(offset + diff));
-
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-	CC_INCREMENT_GL_DRAWN_BATCHES_AND_VERTICES(1, offset);
-	//	CC_INCREMENT_GL_DRAWS(1);
-
-	CHECK_GL_ERROR_DEBUG();
-
-	glDisable(GL_TEXTURE_2D);
-	glDisable(GL_ALPHA_TEST);
-	//ブレンドモード　減算時の設定を戻す
-	glBlendEquation(GL_FUNC_ADD);
-	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-}
-
-/**
-* SSRenderTexture
-*/
-void SSRenderTexture::draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transform, uint32_t flags)
-{
-	//SS5Manegerのエフェクトアップデートを設定
-	auto sspman = ss::SSPManager::getInstance();
-	sspman->setUpdateFlag();
-
-	cocos2d::RenderTexture::draw(renderer, transform, flags);
-	return;
-}
-
-SSRenderTexture* SSRenderTexture::create(int w, int h)
-{
-
-	SSRenderTexture *ret = new (std::nothrow) SSRenderTexture();
-
-	if (ret && ret->initWithWidthAndHeight(w, h, cocos2d::Texture2D::PixelFormat::RGBA8888, 0))
-	{
-		ret->autorelease();
-		return ret;
-	}
-	CC_SAFE_DELETE(ret);
-	return nullptr;
-}
-
-
-
-
-
 
 
 };

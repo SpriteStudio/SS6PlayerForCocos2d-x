@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<SpriteStudioAnimePack version="1.00.02">
+<SpriteStudioAnimePack version="2.00.01">
 	<settings>
 		<fps>30</fps>
 		<frameCount>11</frameCount>
@@ -9,6 +9,9 @@
 		<bgColor>FF323232</bgColor>
 		<gridSize>32</gridSize>
 		<gridColor>FF808080</gridColor>
+		<ik_depth>3</ik_depth>
+		<startFrame>0</startFrame>
+		<endFrame>10</endFrame>
 		<outStartNum>0</outStartNum>
 	</settings>
 	<name>character_template_3head</name>
@@ -23,17 +26,20 @@
 				<boundsType>none</boundsType>
 				<inheritType>parent</inheritType>
 				<ineheritRates>
+					<ALPH>1</ALPH>
+					<IFLH>0</IFLH>
+					<IFLV>0</IFLV>
 					<FLPH>0</FLPH>
 					<FLPV>0</FLPV>
 					<HIDE>0</HIDE>
-					<IFLH>0</IFLH>
-					<IFLV>0</IFLV>
 				</ineheritRates>
 				<alphaBlendType>mix</alphaBlendType>
 				<show>1</show>
 				<locked>0</locked>
 				<expandAttribute>0</expandAttribute>
 				<expandChildren>1</expandChildren>
+				<refCellTag></refCellTag>
+				<maskInfluence>1</maskInfluence>
 			</value>
 			<value>
 				<name>user_data</name>
@@ -43,17 +49,20 @@
 				<boundsType>none</boundsType>
 				<inheritType>parent</inheritType>
 				<ineheritRates>
+					<ALPH>1</ALPH>
+					<IFLH>0</IFLH>
+					<IFLV>0</IFLV>
 					<FLPH>0</FLPH>
 					<FLPV>0</FLPV>
 					<HIDE>0</HIDE>
-					<IFLH>0</IFLH>
-					<IFLV>0</IFLV>
 				</ineheritRates>
 				<alphaBlendType>mix</alphaBlendType>
 				<show>1</show>
 				<locked>0</locked>
 				<expandAttribute>0</expandAttribute>
 				<expandChildren>1</expandChildren>
+				<refCellTag></refCellTag>
+				<maskInfluence>1</maskInfluence>
 			</value>
 			<value>
 				<name>collision</name>
@@ -63,17 +72,20 @@
 				<boundsType>circle</boundsType>
 				<inheritType>parent</inheritType>
 				<ineheritRates>
+					<ALPH>1</ALPH>
+					<IFLH>0</IFLH>
+					<IFLV>0</IFLV>
 					<FLPH>0</FLPH>
 					<FLPV>0</FLPV>
 					<HIDE>0</HIDE>
-					<IFLH>0</IFLH>
-					<IFLV>0</IFLV>
 				</ineheritRates>
 				<alphaBlendType>mix</alphaBlendType>
 				<show>1</show>
 				<locked>0</locked>
 				<expandAttribute>0</expandAttribute>
 				<expandChildren>1</expandChildren>
+				<refCellTag></refCellTag>
+				<maskInfluence>1</maskInfluence>
 			</value>
 			<value>
 				<name>hip</name>
@@ -83,17 +95,20 @@
 				<boundsType>none</boundsType>
 				<inheritType>parent</inheritType>
 				<ineheritRates>
+					<ALPH>1</ALPH>
+					<IFLH>0</IFLH>
+					<IFLV>0</IFLV>
 					<FLPH>0</FLPH>
 					<FLPV>0</FLPV>
 					<HIDE>0</HIDE>
-					<IFLH>0</IFLH>
-					<IFLV>0</IFLV>
 				</ineheritRates>
 				<alphaBlendType>mix</alphaBlendType>
 				<show>1</show>
 				<locked>0</locked>
 				<expandAttribute>0</expandAttribute>
 				<expandChildren>1</expandChildren>
+				<refCellTag></refCellTag>
+				<maskInfluence>1</maskInfluence>
 			</value>
 			<value>
 				<name>body</name>
@@ -103,17 +118,20 @@
 				<boundsType>none</boundsType>
 				<inheritType>parent</inheritType>
 				<ineheritRates>
+					<ALPH>1</ALPH>
+					<IFLH>0</IFLH>
+					<IFLV>0</IFLV>
 					<FLPH>0</FLPH>
 					<FLPV>0</FLPV>
 					<HIDE>0</HIDE>
-					<IFLH>0</IFLH>
-					<IFLV>0</IFLV>
 				</ineheritRates>
 				<alphaBlendType>mix</alphaBlendType>
 				<show>1</show>
 				<locked>0</locked>
 				<expandAttribute>0</expandAttribute>
 				<expandChildren>1</expandChildren>
+				<refCellTag></refCellTag>
+				<maskInfluence>1</maskInfluence>
 			</value>
 			<value>
 				<name>head</name>
@@ -123,17 +141,20 @@
 				<boundsType>none</boundsType>
 				<inheritType>parent</inheritType>
 				<ineheritRates>
+					<ALPH>1</ALPH>
+					<IFLH>0</IFLH>
+					<IFLV>0</IFLV>
 					<FLPH>0</FLPH>
 					<FLPV>0</FLPV>
 					<HIDE>0</HIDE>
-					<IFLH>0</IFLH>
-					<IFLV>0</IFLV>
 				</ineheritRates>
 				<alphaBlendType>mix</alphaBlendType>
 				<show>1</show>
 				<locked>0</locked>
 				<expandAttribute>0</expandAttribute>
 				<expandChildren>1</expandChildren>
+				<refCellTag></refCellTag>
+				<maskInfluence>1</maskInfluence>
 			</value>
 			<value>
 				<name>hair</name>
@@ -143,17 +164,20 @@
 				<boundsType>none</boundsType>
 				<inheritType>parent</inheritType>
 				<ineheritRates>
+					<ALPH>1</ALPH>
+					<IFLH>0</IFLH>
+					<IFLV>0</IFLV>
 					<FLPH>0</FLPH>
 					<FLPV>0</FLPV>
 					<HIDE>0</HIDE>
-					<IFLH>0</IFLH>
-					<IFLV>0</IFLV>
 				</ineheritRates>
 				<alphaBlendType>mix</alphaBlendType>
 				<show>1</show>
 				<locked>0</locked>
 				<expandAttribute>0</expandAttribute>
 				<expandChildren>1</expandChildren>
+				<refCellTag></refCellTag>
+				<maskInfluence>1</maskInfluence>
 			</value>
 			<value>
 				<name>upperarm_r</name>
@@ -163,17 +187,20 @@
 				<boundsType>none</boundsType>
 				<inheritType>parent</inheritType>
 				<ineheritRates>
+					<ALPH>1</ALPH>
+					<IFLH>0</IFLH>
+					<IFLV>0</IFLV>
 					<FLPH>0</FLPH>
 					<FLPV>0</FLPV>
 					<HIDE>0</HIDE>
-					<IFLH>0</IFLH>
-					<IFLV>0</IFLV>
 				</ineheritRates>
 				<alphaBlendType>mix</alphaBlendType>
 				<show>1</show>
 				<locked>0</locked>
 				<expandAttribute>0</expandAttribute>
 				<expandChildren>1</expandChildren>
+				<refCellTag></refCellTag>
+				<maskInfluence>1</maskInfluence>
 			</value>
 			<value>
 				<name>arm_r</name>
@@ -183,17 +210,20 @@
 				<boundsType>none</boundsType>
 				<inheritType>parent</inheritType>
 				<ineheritRates>
+					<ALPH>1</ALPH>
+					<IFLH>0</IFLH>
+					<IFLV>0</IFLV>
 					<FLPH>0</FLPH>
 					<FLPV>0</FLPV>
 					<HIDE>0</HIDE>
-					<IFLH>0</IFLH>
-					<IFLV>0</IFLV>
 				</ineheritRates>
 				<alphaBlendType>mix</alphaBlendType>
 				<show>1</show>
 				<locked>0</locked>
 				<expandAttribute>0</expandAttribute>
 				<expandChildren>1</expandChildren>
+				<refCellTag></refCellTag>
+				<maskInfluence>1</maskInfluence>
 			</value>
 			<value>
 				<name>object1</name>
@@ -203,17 +233,20 @@
 				<boundsType>none</boundsType>
 				<inheritType>parent</inheritType>
 				<ineheritRates>
+					<ALPH>1</ALPH>
+					<IFLH>0</IFLH>
+					<IFLV>0</IFLV>
 					<FLPH>0</FLPH>
 					<FLPV>0</FLPV>
 					<HIDE>0</HIDE>
-					<IFLH>0</IFLH>
-					<IFLV>0</IFLV>
 				</ineheritRates>
 				<alphaBlendType>mix</alphaBlendType>
 				<show>1</show>
 				<locked>0</locked>
 				<expandAttribute>0</expandAttribute>
 				<expandChildren>1</expandChildren>
+				<refCellTag></refCellTag>
+				<maskInfluence>1</maskInfluence>
 			</value>
 			<value>
 				<name>object2</name>
@@ -223,17 +256,20 @@
 				<boundsType>none</boundsType>
 				<inheritType>parent</inheritType>
 				<ineheritRates>
+					<ALPH>1</ALPH>
+					<IFLH>0</IFLH>
+					<IFLV>0</IFLV>
 					<FLPH>0</FLPH>
 					<FLPV>0</FLPV>
 					<HIDE>0</HIDE>
-					<IFLH>0</IFLH>
-					<IFLV>0</IFLV>
 				</ineheritRates>
 				<alphaBlendType>mix</alphaBlendType>
-				<show>0</show>
+				<show>1</show>
 				<locked>0</locked>
 				<expandAttribute>0</expandAttribute>
 				<expandChildren>1</expandChildren>
+				<refCellTag></refCellTag>
+				<maskInfluence>1</maskInfluence>
 			</value>
 			<value>
 				<name>upperarm_l</name>
@@ -243,17 +279,20 @@
 				<boundsType>none</boundsType>
 				<inheritType>parent</inheritType>
 				<ineheritRates>
+					<ALPH>1</ALPH>
+					<IFLH>0</IFLH>
+					<IFLV>0</IFLV>
 					<FLPH>0</FLPH>
 					<FLPV>0</FLPV>
 					<HIDE>0</HIDE>
-					<IFLH>0</IFLH>
-					<IFLV>0</IFLV>
 				</ineheritRates>
 				<alphaBlendType>mix</alphaBlendType>
 				<show>1</show>
 				<locked>0</locked>
 				<expandAttribute>0</expandAttribute>
 				<expandChildren>1</expandChildren>
+				<refCellTag></refCellTag>
+				<maskInfluence>1</maskInfluence>
 			</value>
 			<value>
 				<name>arm_l</name>
@@ -263,17 +302,20 @@
 				<boundsType>none</boundsType>
 				<inheritType>parent</inheritType>
 				<ineheritRates>
+					<ALPH>1</ALPH>
+					<IFLH>0</IFLH>
+					<IFLV>0</IFLV>
 					<FLPH>0</FLPH>
 					<FLPV>0</FLPV>
 					<HIDE>0</HIDE>
-					<IFLH>0</IFLH>
-					<IFLV>0</IFLV>
 				</ineheritRates>
 				<alphaBlendType>mix</alphaBlendType>
 				<show>1</show>
 				<locked>0</locked>
 				<expandAttribute>0</expandAttribute>
 				<expandChildren>1</expandChildren>
+				<refCellTag></refCellTag>
+				<maskInfluence>1</maskInfluence>
 			</value>
 			<value>
 				<name>object3</name>
@@ -283,17 +325,20 @@
 				<boundsType>none</boundsType>
 				<inheritType>parent</inheritType>
 				<ineheritRates>
+					<ALPH>1</ALPH>
+					<IFLH>0</IFLH>
+					<IFLV>0</IFLV>
 					<FLPH>0</FLPH>
 					<FLPV>0</FLPV>
 					<HIDE>0</HIDE>
-					<IFLH>0</IFLH>
-					<IFLV>0</IFLV>
 				</ineheritRates>
 				<alphaBlendType>mix</alphaBlendType>
-				<show>0</show>
+				<show>1</show>
 				<locked>0</locked>
 				<expandAttribute>0</expandAttribute>
 				<expandChildren>1</expandChildren>
+				<refCellTag></refCellTag>
+				<maskInfluence>1</maskInfluence>
 			</value>
 			<value>
 				<name>tight_l</name>
@@ -303,17 +348,20 @@
 				<boundsType>none</boundsType>
 				<inheritType>parent</inheritType>
 				<ineheritRates>
+					<ALPH>1</ALPH>
+					<IFLH>0</IFLH>
+					<IFLV>0</IFLV>
 					<FLPH>0</FLPH>
 					<FLPV>0</FLPV>
 					<HIDE>0</HIDE>
-					<IFLH>0</IFLH>
-					<IFLV>0</IFLV>
 				</ineheritRates>
 				<alphaBlendType>mix</alphaBlendType>
 				<show>1</show>
 				<locked>0</locked>
 				<expandAttribute>0</expandAttribute>
 				<expandChildren>1</expandChildren>
+				<refCellTag></refCellTag>
+				<maskInfluence>1</maskInfluence>
 			</value>
 			<value>
 				<name>leg_l</name>
@@ -323,17 +371,20 @@
 				<boundsType>none</boundsType>
 				<inheritType>parent</inheritType>
 				<ineheritRates>
+					<ALPH>1</ALPH>
+					<IFLH>0</IFLH>
+					<IFLV>0</IFLV>
 					<FLPH>0</FLPH>
 					<FLPV>0</FLPV>
 					<HIDE>0</HIDE>
-					<IFLH>0</IFLH>
-					<IFLV>0</IFLV>
 				</ineheritRates>
 				<alphaBlendType>mix</alphaBlendType>
 				<show>1</show>
 				<locked>0</locked>
 				<expandAttribute>0</expandAttribute>
 				<expandChildren>1</expandChildren>
+				<refCellTag></refCellTag>
+				<maskInfluence>1</maskInfluence>
 			</value>
 			<value>
 				<name>tight_r</name>
@@ -343,17 +394,20 @@
 				<boundsType>none</boundsType>
 				<inheritType>parent</inheritType>
 				<ineheritRates>
+					<ALPH>1</ALPH>
+					<IFLH>0</IFLH>
+					<IFLV>0</IFLV>
 					<FLPH>0</FLPH>
 					<FLPV>0</FLPV>
 					<HIDE>0</HIDE>
-					<IFLH>0</IFLH>
-					<IFLV>0</IFLV>
 				</ineheritRates>
 				<alphaBlendType>mix</alphaBlendType>
 				<show>1</show>
 				<locked>0</locked>
 				<expandAttribute>0</expandAttribute>
 				<expandChildren>1</expandChildren>
+				<refCellTag></refCellTag>
+				<maskInfluence>1</maskInfluence>
 			</value>
 			<value>
 				<name>leg_r</name>
@@ -363,17 +417,20 @@
 				<boundsType>none</boundsType>
 				<inheritType>parent</inheritType>
 				<ineheritRates>
+					<ALPH>1</ALPH>
+					<IFLH>0</IFLH>
+					<IFLV>0</IFLV>
 					<FLPH>0</FLPH>
 					<FLPV>0</FLPV>
 					<HIDE>0</HIDE>
-					<IFLH>0</IFLH>
-					<IFLV>0</IFLV>
 				</ineheritRates>
 				<alphaBlendType>mix</alphaBlendType>
 				<show>1</show>
 				<locked>0</locked>
 				<expandAttribute>0</expandAttribute>
 				<expandChildren>1</expandChildren>
+				<refCellTag></refCellTag>
+				<maskInfluence>1</maskInfluence>
 			</value>
 			<value>
 				<name>shadow</name>
@@ -383,24 +440,61 @@
 				<boundsType>none</boundsType>
 				<inheritType>parent</inheritType>
 				<ineheritRates>
+					<ALPH>1</ALPH>
+					<IFLH>0</IFLH>
+					<IFLV>0</IFLV>
 					<FLPH>0</FLPH>
 					<FLPV>0</FLPV>
 					<HIDE>0</HIDE>
-					<IFLH>0</IFLH>
-					<IFLV>0</IFLV>
 				</ineheritRates>
 				<alphaBlendType>mix</alphaBlendType>
 				<show>1</show>
 				<locked>0</locked>
 				<expandAttribute>0</expandAttribute>
 				<expandChildren>1</expandChildren>
+				<refCellTag></refCellTag>
+				<maskInfluence>1</maskInfluence>
 			</value>
 		</partList>
+		<boneList />
+		<meshList />
 	</Model>
 	<cellmapNames>
 		<value>character_3head.ssce</value>
 	</cellmapNames>
 	<animeList>
+		<anime>
+			<name>Setup</name>
+			<overrideSettings>1</overrideSettings>
+			<settings>
+				<fps>30</fps>
+				<frameCount>1</frameCount>
+				<sortMode>prio</sortMode>
+				<canvasSize>320 320</canvasSize>
+				<pivot>0 0</pivot>
+				<bgColor>FF323232</bgColor>
+				<gridSize>32</gridSize>
+				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>0</endFrame>
+				<outStartNum>0</outStartNum>
+			</settings>
+			<labels />
+			<isSetup>1</isSetup>
+			<partAnimes>
+				<partAnime>
+					<partName>root</partName>
+					<attributes>
+						<attribute tag="HIDE">
+							<key time="0">
+								<value>0</value>
+							</key>
+						</attribute>
+					</attributes>
+				</partAnime>
+			</partAnimes>
+		</anime>
 		<anime>
 			<name>attack1</name>
 			<overrideSettings>1</overrideSettings>
@@ -413,9 +507,13 @@
 				<bgColor>FF323232</bgColor>
 				<gridSize>32</gridSize>
 				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>20</endFrame>
 				<outStartNum>0</outStartNum>
 			</settings>
 			<labels />
+			<isSetup>0</isSetup>
 			<partAnimes>
 				<partAnime>
 					<partName>root</partName>
@@ -1691,9 +1789,13 @@
 				<bgColor>FF323232</bgColor>
 				<gridSize>32</gridSize>
 				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>20</endFrame>
 				<outStartNum>0</outStartNum>
 			</settings>
 			<labels />
+			<isSetup>0</isSetup>
 			<partAnimes>
 				<partAnime>
 					<partName>root</partName>
@@ -2993,9 +3095,13 @@
 				<bgColor>FF323232</bgColor>
 				<gridSize>32</gridSize>
 				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>20</endFrame>
 				<outStartNum>0</outStartNum>
 			</settings>
 			<labels />
+			<isSetup>0</isSetup>
 			<partAnimes>
 				<partAnime>
 					<partName>root</partName>
@@ -4157,9 +4263,13 @@
 				<bgColor>FF323232</bgColor>
 				<gridSize>32</gridSize>
 				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>11</endFrame>
 				<outStartNum>0</outStartNum>
 			</settings>
 			<labels />
+			<isSetup>0</isSetup>
 			<partAnimes>
 				<partAnime>
 					<partName>root</partName>
@@ -5507,9 +5617,13 @@
 				<bgColor>FF323232</bgColor>
 				<gridSize>32</gridSize>
 				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>30</endFrame>
 				<outStartNum>0</outStartNum>
 			</settings>
 			<labels />
+			<isSetup>0</isSetup>
 			<partAnimes>
 				<partAnime>
 					<partName>root</partName>
@@ -6263,9 +6377,13 @@
 				<bgColor>FF323232</bgColor>
 				<gridSize>32</gridSize>
 				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>59</endFrame>
 				<outStartNum>0</outStartNum>
 			</settings>
 			<labels />
+			<isSetup>0</isSetup>
 			<partAnimes>
 				<partAnime>
 					<partName>root</partName>
@@ -7451,9 +7569,13 @@
 				<bgColor>FF323232</bgColor>
 				<gridSize>32</gridSize>
 				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>59</endFrame>
 				<outStartNum>0</outStartNum>
 			</settings>
 			<labels />
+			<isSetup>0</isSetup>
 			<partAnimes>
 				<partAnime>
 					<partName>root</partName>
@@ -8953,9 +9075,13 @@
 				<bgColor>FF323232</bgColor>
 				<gridSize>32</gridSize>
 				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>20</endFrame>
 				<outStartNum>0</outStartNum>
 			</settings>
 			<labels />
+			<isSetup>0</isSetup>
 			<partAnimes>
 				<partAnime>
 					<partName>root</partName>
@@ -9700,9 +9826,13 @@
 				<bgColor>FF323232</bgColor>
 				<gridSize>32</gridSize>
 				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>0</endFrame>
 				<outStartNum>0</outStartNum>
 			</settings>
 			<labels />
+			<isSetup>0</isSetup>
 			<partAnimes>
 				<partAnime>
 					<partName>root</partName>
@@ -10351,9 +10481,13 @@
 				<bgColor>FF323232</bgColor>
 				<gridSize>32</gridSize>
 				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>29</endFrame>
 				<outStartNum>0</outStartNum>
 			</settings>
 			<labels />
+			<isSetup>0</isSetup>
 			<partAnimes>
 				<partAnime>
 					<partName>root</partName>
@@ -11944,9 +12078,13 @@
 				<bgColor>FF323232</bgColor>
 				<gridSize>32</gridSize>
 				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>20</endFrame>
 				<outStartNum>0</outStartNum>
 			</settings>
 			<labels />
+			<isSetup>0</isSetup>
 			<partAnimes>
 				<partAnime>
 					<partName>root</partName>
@@ -13168,9 +13306,13 @@
 				<bgColor>FF323232</bgColor>
 				<gridSize>32</gridSize>
 				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>20</endFrame>
 				<outStartNum>0</outStartNum>
 			</settings>
 			<labels />
+			<isSetup>0</isSetup>
 			<partAnimes>
 				<partAnime>
 					<partName>root</partName>
@@ -14383,9 +14525,13 @@
 				<bgColor>FF323232</bgColor>
 				<gridSize>32</gridSize>
 				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>10</endFrame>
 				<outStartNum>0</outStartNum>
 			</settings>
 			<labels />
+			<isSetup>0</isSetup>
 			<partAnimes>
 				<partAnime>
 					<partName>root</partName>
@@ -15526,9 +15672,13 @@
 				<bgColor>FF323232</bgColor>
 				<gridSize>32</gridSize>
 				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>9</endFrame>
 				<outStartNum>0</outStartNum>
 			</settings>
 			<labels />
+			<isSetup>0</isSetup>
 			<partAnimes>
 				<partAnime>
 					<partName>root</partName>
@@ -16459,9 +16609,13 @@
 				<bgColor>FF323232</bgColor>
 				<gridSize>32</gridSize>
 				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>9</endFrame>
 				<outStartNum>0</outStartNum>
 			</settings>
 			<labels />
+			<isSetup>0</isSetup>
 			<partAnimes>
 				<partAnime>
 					<partName>root</partName>
@@ -17517,9 +17671,13 @@
 				<bgColor>FF323232</bgColor>
 				<gridSize>32</gridSize>
 				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>20</endFrame>
 				<outStartNum>0</outStartNum>
 			</settings>
 			<labels />
+			<isSetup>0</isSetup>
 			<partAnimes>
 				<partAnime>
 					<partName>root</partName>
@@ -18754,9 +18912,13 @@
 				<bgColor>FF323232</bgColor>
 				<gridSize>32</gridSize>
 				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>10</endFrame>
 				<outStartNum>0</outStartNum>
 			</settings>
 			<labels />
+			<isSetup>0</isSetup>
 			<partAnimes>
 				<partAnime>
 					<partName>root</partName>
@@ -19405,9 +19567,13 @@
 				<bgColor>FF323232</bgColor>
 				<gridSize>32</gridSize>
 				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>9</endFrame>
 				<outStartNum>0</outStartNum>
 			</settings>
 			<labels />
+			<isSetup>0</isSetup>
 			<partAnimes>
 				<partAnime>
 					<partName>root</partName>
@@ -20527,9 +20693,13 @@
 				<bgColor>FF323232</bgColor>
 				<gridSize>32</gridSize>
 				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>20</endFrame>
 				<outStartNum>0</outStartNum>
 			</settings>
 			<labels />
+			<isSetup>0</isSetup>
 			<partAnimes>
 				<partAnime>
 					<partName>root</partName>
@@ -21700,9 +21870,13 @@
 				<bgColor>FF323232</bgColor>
 				<gridSize>32</gridSize>
 				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>20</endFrame>
 				<outStartNum>0</outStartNum>
 			</settings>
 			<labels />
+			<isSetup>0</isSetup>
 			<partAnimes>
 				<partAnime>
 					<partName>root</partName>
@@ -23053,9 +23227,13 @@
 				<bgColor>FF323232</bgColor>
 				<gridSize>32</gridSize>
 				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>59</endFrame>
 				<outStartNum>0</outStartNum>
 			</settings>
 			<labels />
+			<isSetup>0</isSetup>
 			<partAnimes>
 				<partAnime>
 					<partName>root</partName>
@@ -24529,9 +24707,13 @@
 				<bgColor>FF323232</bgColor>
 				<gridSize>32</gridSize>
 				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>59</endFrame>
 				<outStartNum>0</outStartNum>
 			</settings>
 			<labels />
+			<isSetup>0</isSetup>
 			<partAnimes>
 				<partAnime>
 					<partName>root</partName>
@@ -25677,9 +25859,13 @@
 				<bgColor>FF323232</bgColor>
 				<gridSize>32</gridSize>
 				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>19</endFrame>
 				<outStartNum>0</outStartNum>
 			</settings>
 			<labels />
+			<isSetup>0</isSetup>
 			<partAnimes>
 				<partAnime>
 					<partName>root</partName>
@@ -26722,9 +26908,13 @@
 				<bgColor>FF323232</bgColor>
 				<gridSize>32</gridSize>
 				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>30</endFrame>
 				<outStartNum>0</outStartNum>
 			</settings>
 			<labels />
+			<isSetup>0</isSetup>
 			<partAnimes>
 				<partAnime>
 					<partName>root</partName>
@@ -27320,10 +27510,10 @@
 						</attribute>
 						<attribute tag="HIDE">
 							<key time="0">
-								<value>0</value>
+								<value>1</value>
 							</key>
 							<key time="30">
-								<value>0</value>
+								<value>1</value>
 							</key>
 						</attribute>
 					</attributes>
@@ -27874,9 +28064,13 @@
 				<bgColor>FF323232</bgColor>
 				<gridSize>32</gridSize>
 				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>39</endFrame>
 				<outStartNum>0</outStartNum>
 			</settings>
 			<labels />
+			<isSetup>0</isSetup>
 			<partAnimes>
 				<partAnime>
 					<partName>root</partName>
@@ -28852,9 +29046,13 @@
 				<bgColor>FF323232</bgColor>
 				<gridSize>32</gridSize>
 				<gridColor>FF808080</gridColor>
+				<ik_depth>3</ik_depth>
+				<startFrame>0</startFrame>
+				<endFrame>39</endFrame>
 				<outStartNum>0</outStartNum>
 			</settings>
 			<labels />
+			<isSetup>0</isSetup>
 			<partAnimes>
 				<partAnime>
 					<partName>root</partName>

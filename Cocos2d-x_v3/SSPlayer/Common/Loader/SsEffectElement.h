@@ -77,11 +77,11 @@ public:
         type = VarianceValue::MinMax;
 	}
 
-	void	setPlusMinus(mytype v1)
+	void	setPlusMinus( mytype v1  )
 	{
 		value = -v1;
 		subvalue = v1;
-		type = VarianceValue::PlusMinus;
+        type = VarianceValue::PlusMinus;
 	}
 
 	void	setMinMax(mytype min , mytype max)
@@ -659,6 +659,7 @@ public:
 	virtual ~ParticleTurnToDirectionEnabled(){}
 };
 
+
 //--------------------------------------------------------------------------------------
 class  ParticleInfiniteEmitEnabled : public SsEffectElementBase
 {
@@ -669,15 +670,13 @@ public:
 		setType(SsEffectFunctionType::InfiniteEmitEnabled);
 	}
 	virtual ~ParticleInfiniteEmitEnabled() {}
-	/*
+/*
 	SSSERIALIZE_BLOCK
 	{
 
 	}
-	*/
+*/
 };
-
-
 
 };
 

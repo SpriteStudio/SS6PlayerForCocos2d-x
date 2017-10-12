@@ -784,6 +784,7 @@ public:
 		e->particle.gravityPos = source->Position;
 //		e->particle.gravityPower = source->Power / 100.0f;
 		e->particle.gravityPower = source->Power;
+
 	}
 };
 static FuncParticlePointGravity		funcPointGravity;

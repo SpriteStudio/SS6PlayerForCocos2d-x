@@ -8,6 +8,9 @@
 #include "ssplayer_matrix.h"
 #include "ssplayer_effectfunction.h"
 
+#include "../../SS6PlayerPlatform.h"
+
+
 namespace ss
 {
 
@@ -66,9 +69,9 @@ static  int seed_table[] =
 SsEffectDrawBatch*	SsEffectRenderer::findBatchListSub(SsEffectNode* n)
 {
 	SsEffectDrawBatch* bl = 0;
-	foreach( std::list<SsEffectDrawBatch*> , drawBatchList , e )
+	foreach(std::list<SsEffectDrawBatch*>, drawBatchList, e)
 	{
-		if ( (*e)->targetNode == n )
+		if ((*e)->targetNode == n)
 		{
 			bl = (*e);
 			return bl;
@@ -83,10 +86,10 @@ SsEffectDrawBatch*	SsEffectRenderer::findBatchList(SsEffectNode* n)
 {
 
 	SsEffectDrawBatch* bl = 0;//findBatchListSub(n);
-	if ( bl ==0 )
+	if (bl == 0)
 	{
-		if ( SSEFFECTRENDER_BACTH_MAX <= dpr_pool_count ){
-				return 0;
+		if (SSEFFECTRENDER_BACTH_MAX <= dpr_pool_count){
+			return 0;
 		}
 
 		bl = &drawPr_pool[dpr_pool_count];
@@ -102,18 +105,18 @@ SsEffectDrawBatch*	SsEffectRenderer::findBatchList(SsEffectNode* n)
 //------------------------------------------------------------------------------
 //要素生成関数
 //------------------------------------------------------------------------------
-SsEffectRenderAtom* SsEffectRenderer::CreateAtom( unsigned int seed , SsEffectRenderAtom* parent , SsEffectNode* node )
+SsEffectRenderAtom* SsEffectRenderer::CreateAtom(unsigned int seed, SsEffectRenderAtom* parent, SsEffectNode* node)
 {
 	SsEffectRenderAtom* ret = 0;
-	SsEffectNodeType::_enum type = node->GetType(); 
+	SsEffectNodeType::_enum type = node->GetType();
 
 
-	if ( type == SsEffectNodeType::particle )
+	if (type == SsEffectNodeType::particle)
 	{
 #if PFMEM_TEST
-		if ( SSEFFECTRENDER_PARTICLE_MAX <= pa_pool_count )
+		if (SSEFFECTRENDER_PARTICLE_MAX <= pa_pool_count)
 		{
-			 return 0;
+			return 0;
 		}
 		SsEffectRenderParticle* p = &pa_pool[pa_pool_count];
 		p->InitParameter();
@@ -126,25 +129,25 @@ SsEffectRenderAtom* SsEffectRenderer::CreateAtom( unsigned int seed , SsEffectRe
 		SsEffectRenderParticle* p = new SsEffectRenderParticle( node , parent );
 #endif
 
-		updatelist.push_back( p );
-		createlist.push_back( p );
+		updatelist.push_back(p);
+		createlist.push_back(p);
 		SsEffectRenderEmitter*	em = (SsEffectRenderEmitter*)parent;
-        em->myBatchList->drawlist.push_back( p );
-	
+		em->myBatchList->drawlist.push_back(p);
+
 		ret = p;
 	}
 
 
-	if ( type == SsEffectNodeType::emmiter )
+	if (type == SsEffectNodeType::emmiter)
 	{
 
 #if PFMEM_TEST
-		if ( SSEFFECTRENDER_EMMITER_MAX <= em_pool_count )
+		if (SSEFFECTRENDER_EMMITER_MAX <= em_pool_count)
 		{
 			return 0;
 		}
-		if ( SSEFFECTRENDER_BACTH_MAX <= dpr_pool_count ){
-				return 0;
+		if (SSEFFECTRENDER_BACTH_MAX <= dpr_pool_count){
+			return 0;
 		}
 
 		SsEffectRenderEmitter* p = &em_pool[em_pool_count];
@@ -158,26 +161,26 @@ SsEffectRenderAtom* SsEffectRenderer::CreateAtom( unsigned int seed , SsEffectRe
 		p->parent = parent;
 
 #else
-		SsEffectRenderEmitter* p = new SsEffectRenderEmitter( node , parent);
+		SsEffectRenderEmitter* p = new SsEffectRenderEmitter(node, parent);
 #endif
-		p->setMySeed( seed );
-		p->TrushRandom( em_pool_count%9 );
+		p->setMySeed(seed);
+		p->TrushRandom(em_pool_count % 9);
 
-		SsEffectFunctionExecuter::initalize( &p->data->behavior , p );
+		SsEffectFunctionExecuter::initalize(&p->data->behavior, p);
 
 		//表示に必要な情報のコピー
 		p->dispCell.refCell = p->data->behavior.refCell;
 		p->dispCell.blendType = p->data->behavior.blendType;
 
-		updatelist.push_back( p );
-		createlist.push_back( p );
+		updatelist.push_back(p);
+		createlist.push_back(p);
 
 
 		//バッチリストを調べる
 		SsEffectDrawBatch* bl = findBatchList(node);
 
 		p->myBatchList = bl;
-		drawBatchList.push_back( bl );
+		drawBatchList.push_back(bl);
 
 		ret = p;
 	}
@@ -463,7 +466,19 @@ void	SsEffectRenderParticle::update(float delta)
 //------------------------------------------------------------------------------
 void	SsEffectRenderParticle::updateDelta(float delta)
 {
-	_rotation+=( _rotationAdd*delta );
+	int updir;
+	int window_w;
+	int window_h;
+	SSGetPlusDirection(updir, window_w, window_h);
+
+	if (updir == PLUS_DOWN)
+	{
+		_rotation -= (_rotationAdd*delta);
+	}
+	else
+	{
+		_rotation += (_rotationAdd*delta);
+	}
 
 	_exsitTime+=delta;
 	_life = _lifetime - _exsitTime;
@@ -496,6 +511,10 @@ void	SsEffectRenderParticle::updateDelta(float delta)
 //------------------------------------------------------------------------------
 void 	SsEffectRenderParticle::updateForce(float delta)
 {
+	int updir;
+	int window_w;
+	int window_h;
+	SSGetPlusDirection(updir, window_w, window_h);
 
 	this->_backposition = this->_position;
 
@@ -505,8 +524,16 @@ void 	SsEffectRenderParticle::updateForce(float delta)
 
 	if ( isTurnDirection )
 	{
-		this->direction =  SsPoint2::get_angle_360( SsVector2( 1.0f , 0.0f ) , ff ) - (float)DegreeToRadian(90);
-	}else{
+		if (updir == PLUS_DOWN)
+		{
+			this->direction = -SsPoint2::get_angle_360(SsVector2(1.0f, 0.0f), ff) + (float)DegreeToRadian(90);	//上がマイナスの場合
+		}
+		else
+		{
+			this->direction = SsPoint2::get_angle_360(SsVector2(1.0f, 0.0f), ff) - (float)DegreeToRadian(90);
+		}
+	}
+	else{
         this->direction = 0;
 	}
 
@@ -522,109 +549,152 @@ void 	SsEffectRenderParticle::updateForce(float delta)
 void	SsEffectRenderParticle::draw(SsEffectRenderer* render)
 {
 
-	if ( this->parentEmitter == NULL  )return;
-	if ( refBehavior == NULL ) return;
-	if (dispCell->refCell.texture == nullptr) return;
+	if (this->parentEmitter == NULL)return;
+	if (refBehavior == NULL) return;
+	if (dispCell->refCell.cellIndex == -1) return;
 
 	float		matrix[4 * 4];	///< 行列
-	IdentityMatrix( matrix );
+	IdentityMatrix(matrix);
 
 
 	if (render->parentState)
 	{
-		memcpy( matrix , render->parentState->matrix , sizeof( float ) * 16 );
+		memcpy(matrix, render->parentState->matrix, sizeof(float) * 16);
 		this->alpha = render->render_root->alpha;
 	}
 
-	TranslationMatrixM( matrix , _position.x, _position.y, 0.0f );
+	int updir;
+	int window_w;
+	int window_h;
+	SSGetPlusDirection(updir, window_w, window_h);
 
-	RotationXYZMatrixM( matrix , 0 , 0 , DegreeToRadian(_rotation)+direction );
+	if (updir == PLUS_DOWN)
+	{
+		TranslationMatrixM(matrix, _position.x, -_position.y, 0.0f);	//上がマイナスなので反転する
+	}
+	else
+	{
+		TranslationMatrixM(matrix, _position.x, _position.y, 0.0f);
+	}
 
-    ScaleMatrixM(  matrix , _size.x, _size.y, 1.0f );
+	RotationXYZMatrixM(matrix, 0, 0, DegreeToRadian(_rotation) + direction);
+
+	ScaleMatrixM(matrix, _size.x, _size.y, 1.0f);
 
 	SsFColor fcolor;
-	fcolor.fromARGB( _color.toARGB() );
+	fcolor.fromARGB(_color.toARGB());
 	fcolor.a = fcolor.a * this->alpha;
 	if (fcolor.a == 0.0f)
 	{
 		return;
 	}
-
-	//cocos2d-xでの描画
-	CustomSprite *sprite = render->_SSPManeger->getEffectBuffer();
-	if (sprite == 0)	//スプライトが作成されていない
+	State state;
+	state = render->_parentSprite->_state;		//親パーツの情報をコピー
+	for (int i = 0; i < 16; i++)
 	{
-		return;
+		state.mat[i] = matrix[i];				//マトリクスのコピー
 	}
-	if (render->_parentSprite)
-	{ 
-		render->_parentSprite->addChild(sprite);	//子供にする
-	}
-	sprite->setVisible(true);			//表示
-	sprite->setPosition(cocos2d::Vec2(_position.x, _position.y));
-	sprite->setScale(_size.x, _size.y);
-	cocos2d::Vec3 rot(0, 0, -_rotation + RadianToDegree(-direction));
-	sprite->setRotation3D(rot);
+	state.texture = dispCell->refCell.texture;	//テクスチャID	
+	state.rect = dispCell->refCell.rect;		//セルの矩形をコピー	
+	float width_h = state.rect.size.width / 2;
+	float height_h = state.rect.size.height / 2;
+	float x1 = -width_h;
+	float y1 = -height_h;
+	float x2 = width_h;
+	float y2 = height_h;
 
-	//テクスチャ、カラーブレンド
-	sprite->setTexture(dispCell->refCell.texture);
-	cocos2d::Rect rect = dispCell->refCell.rect;
-	sprite->setTextureRect(rect);
-	cocos2d::BlendFunc blendFunc = sprite->getBlendFunc();
-	switch (dispCell->blendType)		//ブレンド表示
+	if (updir == PLUS_DOWN)
 	{
-	case SsRenderBlendType::_enum::Mix:
-		//通常
-		if (!dispCell->refCell.texture->hasPremultipliedAlpha())
-		{
-			blendFunc.src = GL_SRC_ALPHA;
-			blendFunc.dst = GL_ONE_MINUS_SRC_ALPHA;
-		}
-		else
-		{
-			blendFunc.src = GL_ONE;
-			blendFunc.dst = GL_ONE_MINUS_SRC_ALPHA;
-		}
-		break;
-	case SsRenderBlendType::_enum::Add:
-		//加算
-		blendFunc.src = GL_SRC_ALPHA;
-		blendFunc.dst = GL_ONE;
-		break;
+		state.quad.tl.vertices.x = x1;
+		state.quad.tl.vertices.y = y1;
+		state.quad.tr.vertices.x = x2;
+		state.quad.tr.vertices.y = y1;
+		state.quad.bl.vertices.x = x1;
+		state.quad.bl.vertices.y = y2;
+		state.quad.br.vertices.x = x2;
+		state.quad.br.vertices.y = y2;
 	}
-	sprite->setBlendFunc(blendFunc);
-	//プレイヤー側のセルを参照する
-	//原点
-	float pivotX = dispCell->refCell.pivot_X + 0.5f;
-	float pivotY = dispCell->refCell.pivot_Y + 0.5f;
-	sprite->setAnchorPoint(cocos2d::Point(pivotX, 1.0f - pivotY));	//cocosは下が-なので座標を反転させる
-
-	cocos2d::V3F_C4B_T2F_Quad& quad = sprite->getAttributeRef();
-	if (render->_isContentScaleFactorAuto == true)
+	else
 	{
-		//ContentScaleFactor対応
-		float cScale = cocos2d::Director::getInstance()->getContentScaleFactor();
-		quad.tl.texCoords.u /= cScale;
-		quad.tr.texCoords.u /= cScale;
-		quad.bl.texCoords.u /= cScale;
-		quad.br.texCoords.u /= cScale;
-		quad.tl.texCoords.v /= cScale;
-		quad.tr.texCoords.v /= cScale;
-		quad.bl.texCoords.v /= cScale;
-		quad.br.texCoords.v /= cScale;
+		state.quad.tl.vertices.x = x1;
+		state.quad.tl.vertices.y = y2;
+		state.quad.tr.vertices.x = x2;
+		state.quad.tr.vertices.y = y2;
+		state.quad.bl.vertices.x = x1;
+		state.quad.bl.vertices.y = y1;
+		state.quad.br.vertices.x = x2;
+		state.quad.br.vertices.y = y1;
 	}
 
-	//カラー変更
-	GLubyte r = (GLubyte)(fcolor.r * 255.0f);
-	GLubyte g = (GLubyte)(fcolor.g * 255.0f);
-	GLubyte b = (GLubyte)(fcolor.b * 255.0f);
-	GLubyte a = (GLubyte)(fcolor.a * 255.0f);
-	sprite->setOpacity(a);
-	cocos2d::Color3B color3( r, g, b );
-	sprite->setColor(color3);
+	//UVを設定する
+	int atlasWidth = state.texture.size_w;
+	int atlasHeight = state.texture.size_h;
+	float left, right, top, bottom;
+	left = state.rect.origin.x / (float)atlasWidth;
+	right = (state.rect.origin.x + state.rect.size.width) / (float)atlasWidth;
+	top = state.rect.origin.y / (float)atlasHeight;
+	bottom = (state.rect.origin.y + state.rect.size.height) / (float)atlasHeight;
+
+	state.quad.tl.texCoords.u = left;
+	state.quad.tl.texCoords.v = top;
+	state.quad.tr.texCoords.u = right;
+	state.quad.tr.texCoords.v = top;
+	state.quad.bl.texCoords.u = left;
+	state.quad.bl.texCoords.v = bottom;
+	state.quad.br.texCoords.u = right;
+	state.quad.br.texCoords.v = bottom;
+
+	//ブレンドタイプを設定
+	if (dispCell->blendType == SsRenderBlendType::Mix)
+	{
+		state.blendfunc = BLEND_MIX;	//ブレンドタイプを設定
+	}
+	else
+	{
+		state.blendfunc = BLEND_ADD;	//ブレンドタイプを設定
+	}
+	//	state.flags = PART_FLAG_COLOR_BLEND;		//カラーブレンドフラグを設定
+	state.partsColorFunc = BLEND_MUL;			//カラーブレンドフラグ乗算
+	int r = (int)(fcolor.r * 255.0f);			//カラー値を設定
+	int g = (int)(fcolor.g * 255.0f);
+	int b = (int)(fcolor.b * 255.0f);
+	int a = (int)(fcolor.a * 255.0f);
+	state.quad.tl.colors.r = r;
+	state.quad.tl.colors.g = g;
+	state.quad.tl.colors.b = b;
+	state.quad.tl.colors.a = a;
+	state.quad.tr.colors = state.quad.bl.colors = state.quad.br.colors = state.quad.tl.colors;
+	state.opacity = a;							//透明度を設定
+
+	state.rotationZ += _rotation + RadianToDegree(direction);		//回転
+	state.scaleX *= _size.x;		//スケール
+	state.scaleY *= _size.y;		//スケール
+
+	if ((state.scaleX * state.scaleY) < 0)	//スケールのどちらかが-の場合は回転方向を逆にする
+	{
+		state.rotationZ = -state.rotationZ;
+	}
+
+	//原点計算を行う
+	float px = 0;
+	float py = 0;
+	float cx = ((state.rect.size.width * state.scaleX) * -(dispCell->refCell.pivot_X));
+	float cy;
+	if (updir == PLUS_DOWN)
+	{
+		cy = ((state.rect.size.height * state.scaleY) * -(dispCell->refCell.pivot_Y));
+	}
+	else
+	{
+		cy = ((state.rect.size.height * state.scaleY) * +(dispCell->refCell.pivot_Y));
+	}
+	get_uv_rotation(&cx, &cy, 0, 0, state.rotationZ);
+
+	state.mat[12] += cx;
+	state.mat[13] += cy;
+
+//	SSDrawSprite(state);	//描画
 }
-
-
 //--------------------------------------------------------------------------------------
 //
 //--------------------------------------------------------------------------------------
@@ -722,8 +792,8 @@ void	SsEffectRenderer::draw()
 		{
 			if ( (*e2) )
 			{
-				if ( !(*e2)->m_isLive) continue;
-				if( (*e2)->_life <= 0.0f )continue;
+				if (!(*e2)->m_isLive) continue;
+				if ((*e2)->_life <= 0.0f)continue;
 				(*e2)->draw(this);
 			}
 		}

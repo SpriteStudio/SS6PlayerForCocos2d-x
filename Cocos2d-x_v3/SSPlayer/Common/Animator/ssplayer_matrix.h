@@ -14,6 +14,7 @@ void	MultiplyMatrix(const float *m0, const float *m1, float *matrix);
 void    Matrix4RotationX( float* _matrix ,const float radians );
 void    Matrix4RotationY( float* _matrix ,const float radians );
 void    Matrix4RotationZ( float* _matrix ,const float radians );
+void	MatrixCopy(float* src, float* dst);
 
 inline	void	TranslationMatrixM(  float* _matrix , const float x , const float y , const float z )
 {
@@ -63,6 +64,15 @@ inline	void	RotationXYZMatrixM(  float* _matrix , const float x , const float y 
 		MultiplyMatrix( _m , _matrix , _matrix );
 	}
 }
+inline	void	MatrixCopy(float* src, float* dst)
+{
+	int i;
+	for (i = 0; i < 16; i++)
+	{
+		dst[i] = src[i];
+	}
+}
+
 
 };
 

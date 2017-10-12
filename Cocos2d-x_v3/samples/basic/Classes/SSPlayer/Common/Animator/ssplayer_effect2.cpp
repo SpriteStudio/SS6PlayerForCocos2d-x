@@ -9,7 +9,7 @@
 #include "ssplayer_matrix.h"
 #include "ssplayer_effectfunction.h"
 
-//#include "../../SS5PlayerPlatform.h"
+#include "../../SS6PlayerPlatform.h"
 
 
 #define DEBUG_DISP (0)
@@ -29,14 +29,14 @@ static float blendFloat( float a,float b , float rate )
 	return   ( a + ( b - a ) * rate );
 }
 
-double OutQuad(double t,double totaltime,double max ,double min )
+double OutQuad(double t, double totaltime, double max, double min)
 {
 	if (totaltime == 0.0) return 0.0;
 
 	if (t > totaltime) t = totaltime;
 	max -= min;
 	t /= totaltime;
-	return -max*t*(t-2)+min;
+	return -max*t*(t - 2) + min;
 }
 
 //現在時間から産出される位置を求める
@@ -306,7 +306,6 @@ void	SsEffectEmitter::updateParticle(float time, particleDrawData* p, bool recal
 			p->x += nv.x;
 			p->y += nv.y;
 		}
-
 #if 0
 		float gx = OutQuad(_t *0.8f, _life, particle.gravityPos.x, ox + position.x);
 		float gy = OutQuad(_t *0.8f, _life, particle.gravityPos.y, oy + position.y);
@@ -335,7 +334,7 @@ void	SsEffectEmitter::updateParticle(float time, particleDrawData* p, bool recal
 
 //		if ( time > 0.0f )
 		{
-			updateParticle( time + 1.0f , &dp , true );
+			updateParticle(time + 1.0f, &dp, true);
 			p->direc =  SsVector2::get_angle_360(
 								SsVector2( 1 , 0 ) ,
 								SsVector2(p->x - dp.x, p->y - dp.y) ) + DegreeToRadian(90) + DegreeToRadian(particle.direcRotAdd);
@@ -381,12 +380,12 @@ void	SsEffectEmitter::precalculate2()
 
 	int shot = 0;
 	int offset = particle.delay;
-	for ( int i = 0 ; i < emitter.emitmax ; i++ )
+	for (int i = 0; i < emitter.emitmax; i++)
 	{
-		if ( shot >= emitter.emitnum )
+		if (shot >= emitter.emitnum)
 		{
 			shot = 0;
-			offset+= emitter.interval;
+			offset += emitter.interval;
 		}
 		_offsetPattern.push_back(offset);
 		shot++;
@@ -398,12 +397,12 @@ void	SsEffectEmitter::precalculate2()
 		e.uid = i;
 		e.life = emitter.particleLife + emitter.particleLife2 * rand.genrand_float32();
 		e.cycle = cycle;
-		if ( e.life > cycle )
+		if (e.life > cycle)
 		{
 			e.cycle = e.life;
 		}
 
-		_emitpattern.push_back( e );
+		_emitpattern.push_back(e);
 	}
 
 	if (seedList != NULL)
@@ -485,7 +484,7 @@ void SsEffectEmitter::updateEmitter(double _time, int slide)
 					particleExistList[i].endtime = particleExistList[i].stime + targetEP->life;// + _lifeExtend[slide_num];
 					particleExistList[i].born = false;
 				}
-				else
+				else 
 				{
 					particleExistList[i].born = true;
 				}
@@ -508,6 +507,7 @@ const particleExistSt*	SsEffectEmitter::getParticleDataFromID(int id)
 	return &particleExistList[id];
 }
 
+
 void	SsEffectRenderV2::drawSprite(
 		SsCellValue*		dispCell,
 		SsVector2 _position,
@@ -519,7 +519,6 @@ void	SsEffectRenderV2::drawSprite(
 	)
 {
 
-
 	if (dispCell->refCell.cellIndex == -1) return;
 
 	float		matrix[4 * 4];	///< 行列
@@ -529,20 +528,27 @@ void	SsEffectRenderV2::drawSprite(
 
 	if (_parentSprite)
 	{
-//		memcpy(matrix, _parentSprite->partState.matrix, sizeof(float) * 16);
+		memcpy( matrix , _parentSprite->_state.mat , sizeof( float ) * 16 );
     	parentAlpha = _parentSprite->_state.opacity / 255.0f;
-		if(_parentSprite->_state.flags & PART_FLAG_LOCALOPACITY)
-		{
-			parentAlpha = _parentSprite->_state.localopacity / 255.0f;
-		}
 	}
 
+	int updir;
+	int window_w;
+	int window_h;
+	SSGetPlusDirection(updir, window_w, window_h);
 
-//	TranslationMatrixM(matrix, _position.x * layoutScale.x, _position.y * layoutScale.y, 0.0f);	//レイアウトスケールの反映
+	if (updir == PLUS_DOWN)
+	{
+		TranslationMatrixM(matrix, _position.x * layoutScale.x, -_position.y * layoutScale.y, 0.0f);	//上がマイナスなので反転する
+	}
+	else
+	{
+		TranslationMatrixM(matrix, _position.x * layoutScale.x, _position.y * layoutScale.y, 0.0f);	//レイアウトスケールの反映
+	}
 
-//	RotationXYZMatrixM( matrix , 0 , 0 , DegreeToRadian(_rotation)+direction );
+	RotationXYZMatrixM( matrix , 0 , 0 , DegreeToRadian(_rotation)+direction );
 
-//    ScaleMatrixM(  matrix , _size.x, _size.y, 1.0f );
+    ScaleMatrixM(  matrix , _size.x, _size.y, 1.0f );
 
 	SsFColor fcolor;
 	fcolor.fromARGB( _color.toARGB() );
@@ -552,76 +558,117 @@ void	SsEffectRenderV2::drawSprite(
 		return;
 	}
 
-	CustomSprite *sprite = _SSPManeger->getEffectBuffer();
-	if (sprite == 0)	//スプライトが作成されていない
+	CustomSprite* cs = _parentSprite;
+	State state;
+	state = _parentSprite->_state;		//親パーツの情報をコピー
+	for (int i = 0; i < 16; i++)
 	{
-		return;
+		state.mat[i] = matrix[i];				//マトリクスのコピー
 	}
-	if (_parentSprite)
+	state.cellIndex = dispCell->refCell.cellIndex;
+	state.texture = dispCell->refCell.texture;	//テクスチャID	
+	state.rect = dispCell->refCell.rect;		//セルの矩形をコピー	
+	float width_h = state.rect.size.width / 2;
+	float height_h = state.rect.size.height / 2;
+	float x1 = -width_h;
+	float y1 = -height_h;
+	float x2 = width_h;
+	float y2 = height_h;
+
+	if (updir == PLUS_DOWN)
 	{
-		_parentSprite->addChild(sprite);	//子供にする
+		state.quad.tl.vertices.x = x1;
+		state.quad.tl.vertices.y = y1;
+		state.quad.tr.vertices.x = x2;
+		state.quad.tr.vertices.y = y1;
+		state.quad.bl.vertices.x = x1;
+		state.quad.bl.vertices.y = y2;
+		state.quad.br.vertices.x = x2;
+		state.quad.br.vertices.y = y2;
 	}
-	sprite->_parentPlayer = _parentSprite->_parentPlayer;
-	sprite->setVisible(true);			//表示
-	sprite->setPosition(cocos2d::Vec2(_position.x * layoutScale.x, _position.y * layoutScale.y));
-	sprite->setScale(_size.x, _size.y);
-	cocos2d::Vec3 rot(0, 0, -_rotation + RadianToDegree(-direction));
-	sprite->setRotation3D(rot);
-
-	//テクスチャ、カラーブレンド
-	sprite->setTexture(dispCell->refCell.texture);
-	cocos2d::Rect rect = dispCell->refCell.rect;
-	sprite->setTextureRect(rect);
-	cocos2d::BlendFunc blendFunc = sprite->getBlendFunc();
-	switch (dispCell->blendType)		//ブレンド表示
+	else
 	{
-	case SsRenderBlendType::_enum::Mix:
-		//通常
-		blendFunc.src = GL_SRC_ALPHA;
-		blendFunc.dst = GL_ONE_MINUS_SRC_ALPHA;
-		break;
-	case SsRenderBlendType::_enum::Add:
-		//加算
-		blendFunc.src = GL_SRC_ALPHA;
-		blendFunc.dst = GL_ONE;
-		break;
-}
-	sprite->setBlendFunc(blendFunc);
-	//プレイヤー側のセルを参照する
-	//原点
-	float pivotX = dispCell->refCell.pivot_X + 0.5f;
-	float pivotY = dispCell->refCell.pivot_Y + 0.5f;
-	sprite->setAnchorPoint(cocos2d::Point(pivotX, 1.0f - pivotY));	//cocosは下が-なので座標を反転させる
-
-	cocos2d::V3F_C4B_T2F_Quad& quad = sprite->getAttributeRef();
-	if (_isContentScaleFactorAuto == true)
-	{
-		//ContentScaleFactor対応
-		float cScale = cocos2d::Director::getInstance()->getContentScaleFactor();
-		quad.tl.texCoords.u /= cScale;
-		quad.tr.texCoords.u /= cScale;
-		quad.bl.texCoords.u /= cScale;
-		quad.br.texCoords.u /= cScale;
-		quad.tl.texCoords.v /= cScale;
-		quad.tr.texCoords.v /= cScale;
-		quad.bl.texCoords.v /= cScale;
-		quad.br.texCoords.v /= cScale;
+		state.quad.tl.vertices.x = x1;
+		state.quad.tl.vertices.y = y2;
+		state.quad.tr.vertices.x = x2;
+		state.quad.tr.vertices.y = y2;
+		state.quad.bl.vertices.x = x1;
+		state.quad.bl.vertices.y = y1;
+		state.quad.br.vertices.x = x2;
+		state.quad.br.vertices.y = y1;
 	}
 
-	//カラー変更
-	GLubyte r = (GLubyte)(fcolor.r * 255.0f);
-	GLubyte g = (GLubyte)(fcolor.g * 255.0f);
-	GLubyte b = (GLubyte)(fcolor.b * 255.0f);
-	GLubyte a = (GLubyte)(fcolor.a * 255.0f);
-	sprite->setOpacity(a);
-	cocos2d::Color3B color3(r, g, b);
-	sprite->setColor(color3);
+	//UVを設定する
+	int atlasWidth = state.texture.size_w;
+	int atlasHeight = state.texture.size_h;
+	float left, right, top, bottom;
+	left = state.rect.origin.x / (float)atlasWidth;
+	right = (state.rect.origin.x + state.rect.size.width) / (float)atlasWidth;
+	top = state.rect.origin.y / (float)atlasHeight;
+	bottom = (state.rect.origin.y + state.rect.size.height) / (float)atlasHeight;
 
-	sprite->_mat = _parentSprite->_mat;
-	sprite->_maskInfluence = _parentSprite->_maskInfluence;	//親パーツのマスク対象を設定する
-	// 行列を再計算させる
-	sprite->setAdditionalTransform(nullptr);
-	sprite->Set_transformDirty();	//Ver 3.13.1対応
+	state.quad.tl.texCoords.u = left;
+	state.quad.tl.texCoords.v = top;
+	state.quad.tr.texCoords.u = right;
+	state.quad.tr.texCoords.v = top;
+	state.quad.bl.texCoords.u = left;
+	state.quad.bl.texCoords.v = bottom;
+	state.quad.br.texCoords.u = right;
+	state.quad.br.texCoords.v = bottom;
+
+	//ブレンドタイプを設定
+	if (dispCell->blendType == SsRenderBlendType::Mix)
+	{
+		state.blendfunc = BLEND_MIX;	//ブレンドタイプを設定
+	}
+	else
+	{
+		state.blendfunc = BLEND_ADD;	//ブレンドタイプを設定
+	}
+	//	state.flags = PART_FLAG_COLOR_BLEND;		//カラーブレンドフラグを設定
+	state.partsColorFunc = BLEND_MUL;			//カラーブレンドフラグ乗算
+	int r = (int)(fcolor.r * 255.0f);			//カラー値を設定
+	int g = (int)(fcolor.g * 255.0f);
+	int b = (int)(fcolor.b * 255.0f);
+	int a = (int)(fcolor.a * 255.0f);
+	state.quad.tl.colors.r = r;
+	state.quad.tl.colors.g = g;
+	state.quad.tl.colors.b = b;
+	state.quad.tl.colors.a = a;
+	state.quad.tr.colors = state.quad.bl.colors = state.quad.br.colors = state.quad.tl.colors;
+	state.opacity = a;							//透明度を設定
+
+	state.rotationZ += _rotation + RadianToDegree(direction);		//回転
+	state.scaleX *= _size.x;		//スケール
+	state.scaleY *= _size.y;		//スケール
+
+	if ((state.scaleX * state.scaleY) < 0)	//スケールのどちらかが-の場合は回転方向を逆にする
+	{
+		state.rotationZ = -state.rotationZ;
+	}
+
+	//原点計算を行う
+	float px = 0;
+	float py = 0;
+	float cx = ((state.rect.size.width * state.scaleX) * -(dispCell->refCell.pivot_X));
+	float cy;
+	if (updir == PLUS_DOWN)
+	{
+		cy = ((state.rect.size.height * state.scaleY) * -(dispCell->refCell.pivot_Y));
+
+	}
+	else
+	{
+		cy = ((state.rect.size.height * state.scaleY) * +(dispCell->refCell.pivot_Y));
+	}
+	get_uv_rotation(&cx, &cy, 0, 0, state.rotationZ);
+
+	state.mat[12] += cx;
+	state.mat[13] += cy;
+
+	SSDrawSprite(cs, &state);	//描画、ステートはエフェクトで用意したものを使用する
+
+	_drawSpritecount++;
 }
 
 
@@ -796,6 +843,8 @@ void	SsEffectRenderV2::update()
 
 void	SsEffectRenderV2::draw()
 {
+	_drawSpritecount = 0;	//表示スプライト数のクリア
+
 	if (nowFrame < 0) return;
 
 	for (size_t i = 0; i < updateList.size(); i++)
@@ -860,14 +909,14 @@ void    SsEffectRenderV2::reload()
 {
 	nowFrame = 0;
 
-    //updateが必要か
+	//updateが必要か
 	stop();
 	clearEmitterList();
 
 	SsEffectNode* root = this->effectData->GetRoot();
 
-    //this->effectData->updateNodeList();//ツールじゃないので要らない
-    const std::vector<SsEffectNode*>& list = this->effectData->getNodeList();
+	//this->effectData->updateNodeList();//ツールじゃないので要らない
+	const std::vector<SsEffectNode*>& list = this->effectData->getNodeList();
 
 	layoutScale.x = (float)(this->effectData->layoutScaleX) / 100.0f;
 	layoutScale.y = (float)(this->effectData->layoutScaleY) / 100.0f;
@@ -878,18 +927,18 @@ void    SsEffectRenderV2::reload()
 	bool _Infinite = false;
 	//パラメータを取得
 	//以前のデータ形式から変換
-	for ( size_t i = 0 ; i < list.size() ; i ++ )
+	for (size_t i = 0; i < list.size(); i++)
 	{
-		SsEffectNode *node =  list[i];
+		SsEffectNode *node = list[i];
 
-		if ( node->GetType() == SsEffectNodeType::emmiter )
+		if (node->GetType() == SsEffectNodeType::emmiter)
 		{
 			SsEffectEmitter* e = new SsEffectEmitter();
 			//パラメータをコピー
 
 			e->_parentIndex = node->parentIndex;
 			//繋ぎ先は恐らくパーティクルなのでエミッタに変換
-			if ( e->_parentIndex != 0 )
+			if (e->_parentIndex != 0)
 			{
 				e->_parentIndex = list[e->_parentIndex]->parentIndex;
 
@@ -917,11 +966,11 @@ void    SsEffectRenderV2::reload()
 
 			initEmitter(e, node);
 			this->emmiterList.push_back(e);
-			if ( e->emitter.Infinite ) _Infinite = true;
+			if (e->emitter.Infinite) _Infinite = true;
 		}
 		else
 		{
-            //エミッター同士を繋ぎたいので
+			//エミッター同士を繋ぎたいので
 			this->emmiterList.push_back(0);
 		}
 	}
@@ -930,22 +979,22 @@ void    SsEffectRenderV2::reload()
 	Infinite = _Infinite;
 
 
-    //親子関係整理
+	//親子関係整理
 
 
 	effectTimeLength = 0;
 	//事前計算計算  updateListにルートの子を配置し親子関係を結ぶ
-	for ( size_t i = 0 ; i < this->emmiterList.size(); i++)
+	for (size_t i = 0; i < this->emmiterList.size(); i++)
 	{
 
-		if (emmiterList[i] != 0 )
+		if (emmiterList[i] != 0)
 		{
 			emmiterList[i]->uid = i;
 			//emmiterList[i]->precalculate();
 			emmiterList[i]->precalculate2(); //ループ対応形式
 
 
-			int  pi =  emmiterList[i]->_parentIndex;
+			int  pi = emmiterList[i]->_parentIndex;
 
 			if (emmiterList[i]->_parentIndex == 0)  //ルート直下
 			{
@@ -958,21 +1007,21 @@ void    SsEffectRenderV2::reload()
 
 				void* t = this->emmiterList[pi];
 
-                emmiterList[i]->_parent = emmiterList[pi];
+				emmiterList[i]->_parent = emmiterList[pi];
 
 				emmiterList[i]->globaltime = emmiterList[i]->getTimeLength() + this->emmiterList[pi]->getTimeLength();
 
 				updateList.push_back(emmiterList[i]);
 			}
 
-			if ( emmiterList[i]->globaltime > effectTimeLength )
+			if (emmiterList[i]->globaltime > effectTimeLength)
 			{
 				effectTimeLength = emmiterList[i]->globaltime;
 			}
 		}
 	}
 	//プライオリティソート
-	std::sort( updateList.begin() , updateList.end() , compare_priority );
+	std::sort(updateList.begin(), updateList.end(), compare_priority);
 
 
 }

@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<SpriteStudioProject version="1.00.03">
+<SpriteStudioProject version="2.00.00">
 	<name>character_template1</name>
 	<exportPath></exportPath>
 	<settings>
 		<animeBaseDirectory></animeBaseDirectory>
 		<cellMapBaseDirectory></cellMapBaseDirectory>
 		<imageBaseDirectory></imageBaseDirectory>
+		<effectBaseDirectory></effectBaseDirectory>
 		<exportBaseDirectory>../export</exportBaseDirectory>
 		<queryExportBaseDirectory>1</queryExportBaseDirectory>
 		<ssaxImport>
@@ -14,10 +15,11 @@
 			<keepAngleAsIsIfNegativeScale>1</keepAngleAsIsIfNegativeScale>
 		</ssaxImport>
 		<copyWhenImportImageIsOutside>1</copyWhenImportImageIsOutside>
-		<exportAnimeFileFormat>SSP for Cocos2d-x (.ssba)</exportAnimeFileFormat>
-		<exportCellMapFileFormat></exportCellMapFileFormat>
+		<exportAnimeFileFormat>SSAX</exportAnimeFileFormat>
+		<exportCellMapFileFormat>invalid</exportCellMapFileFormat>
 		<exportCellMap>0</exportCellMap>
 		<copyImageWhenExportCellmap>1</copyImageWhenExportCellmap>
+		<ssConverterOptions></ssConverterOptions>
 		<ssaxExport>
 			<addAnimeNameEvenIfSingle>1</addAnimeNameEvenIfSingle>
 			<listAllCellMaps>1</listAllCellMaps>
@@ -33,6 +35,15 @@
 		<interpolateColorBlendAsVer4>1</interpolateColorBlendAsVer4>
 		<interpolateVertexOffsetAsVer4>1</interpolateVertexOffsetAsVer4>
 		<restrictXYAsInteger>0</restrictXYAsInteger>
+		<inheritRatesNoKeySave>1</inheritRatesNoKeySave>
+		<availableInterpolationTypes>
+			<item>none</item>
+			<item>linear</item>
+			<item>hermite</item>
+			<item>bezier</item>
+			<item>acceleration</item>
+			<item>deceleration</item>
+		</availableInterpolationTypes>
 		<availableAttributes>
 			<item>CELL</item>
 			<item>POSX</item>
@@ -66,6 +77,7 @@
 			<item>BNDR</item>
 			<item>USER</item>
 		</availableAttributes>
+		<availableFeatures />
 		<defaultSetAttributes>
 			<item>POSX</item>
 			<item>POSY</item>
@@ -75,7 +87,31 @@
 		<wrapMode>clamp</wrapMode>
 		<filterMode>nearlest</filterMode>
 		<interpolationType>linear</interpolationType>
-		<renderingOutputDirectory></renderingOutputDirectory>
+		<renderingSettings>
+			<outputFolder></outputFolder>
+			<outputType>AVI</outputType>
+			<bgColor>FF606060</bgColor>
+			<addAnimeName>0</addAnimeName>
+			<addTimeStamp>0</addTimeStamp>
+			<addAlphaChanel>1</addAlphaChanel>
+			<imageSizeRatioW>100</imageSizeRatioW>
+			<imageSizeRatioH>100</imageSizeRatioH>
+			<imageSizeRatioFix>1</imageSizeRatioFix>
+			<imageSizeIsPixcel>1</imageSizeIsPixcel>
+			<imageSizeExpansion0>0</imageSizeExpansion0>
+			<imageSizeExpansion1>0</imageSizeExpansion1>
+			<imageSizeExpansion2>0</imageSizeExpansion2>
+			<imageSizeExpansion3>0</imageSizeExpansion3>
+		</renderingSettings>
+		<effectSettings>
+			<gridSize>50</gridSize>
+		</effectSettings>
+		<cellTags />
+		<useDecimalDigit>2</useDecimalDigit>
+		<opacifyOutsideCanvasFrame>1</opacifyOutsideCanvasFrame>
+		<convertImageToPMA>0</convertImageToPMA>
+		<blendImageAsPMA>0</blendImageAsPMA>
+		<unpremultiplyAlpha>0</unpremultiplyAlpha>
 	</settings>
 	<animeSettings>
 		<fps>30</fps>
@@ -86,6 +122,9 @@
 		<bgColor>FF323232</bgColor>
 		<gridSize>32</gridSize>
 		<gridColor>FF808080</gridColor>
+		<ik_depth>3</ik_depth>
+		<startFrame>0</startFrame>
+		<endFrame>10</endFrame>
 		<outStartNum>0</outStartNum>
 	</animeSettings>
 	<texPackSettings>
@@ -104,8 +143,9 @@
 		<value>character_template_3head.ssae</value>
 	</animepackNames>
 	<lastAnimeFile>character_template_3head.ssae</lastAnimeFile>
-	<lastAnimeName>stance</lastAnimeName>
-	<lastCellMapFile>character_3head.ssce</lastCellMapFile>
-	<lastCell>object3</lastCell>
-	<lastPart>collision</lastPart>
+	<lastAnimeName>pose1</lastAnimeName>
+	<lastCellMapFile>character_2head.ssce</lastCellMapFile>
+	<lastCell>body</lastCell>
+	<lastPart>root</lastPart>
+	<setupmode>0</setupmode>
 </SpriteStudioProject>

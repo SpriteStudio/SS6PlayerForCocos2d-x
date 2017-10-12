@@ -24,7 +24,7 @@ class SsPartState;
 class SsEffectRenderAtom;
 class SsCell;
 class CustomSprite;
-class SSPManager;
+
 
 #define SEED_MAGIC (7573)
 #define LIFE_EXTEND_SCALE (8)
@@ -307,7 +307,7 @@ public:
 			_emitpattern(0),
 			particleExistList(0),
 			globaltime(0),
-			seedOffset(0) 
+			seedOffset(0)
 	{
 		emitterSeed = SEED_MAGIC;
 	}
@@ -392,7 +392,8 @@ public:
 	//親になるスプライト
 	bool _isContentScaleFactorAuto;
 	CustomSprite						*_parentSprite;
-	SSPManager*							_SSPManeger;
+
+	int			_drawSpritecount; 
 
 public:
 
@@ -406,8 +407,8 @@ protected:
 
 
 public:
-	SsEffectRenderV2() : effectTimeLength(0), isIntFrame(true), seedOffset(0), mySeed(0), _parentSprite(0), _isContentScaleFactorAuto(true), _SSPManeger(0){}
-	virtual ~SsEffectRenderV2()
+	SsEffectRenderV2() : effectTimeLength(0), isIntFrame(true), seedOffset(0), mySeed(0), _parentSprite(0), _isContentScaleFactorAuto(false){}
+	virtual ~SsEffectRenderV2() 
 	{
 		clearEmitterList();
 	}
@@ -481,7 +482,8 @@ public:
 	//親になるスプライトを設定する
 	void setContentScaleEneble(bool eneble) { _isContentScaleFactorAuto = eneble; }
 	void setParentSprite(CustomSprite* sprite) { _parentSprite = sprite; }
-	void setSSPManeger(SSPManager *sspmng) { _SSPManeger = sspmng; }
+
+	int	getDrawSpriteCount() { return _drawSpritecount; }
 };
 
 };

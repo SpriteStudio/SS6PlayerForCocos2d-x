@@ -1,13 +1,13 @@
 ﻿#ifndef __SSPLAYER_EFFECT__
 #define __SSPLAYER_EFFECT__
 
-#include "cocos2d.h"
+#include <list>
+#include "../../SS6Player.h"
 #include "../loader/ssloader.h"
 #include "MersenneTwister.h"
 #include "ssplayer_cellmap.h"
 #include "ssplayer_PartState.h"
 #include "../Helper/DebugPrint.h"
-#include "../../SS6Player.h"
 
 namespace ss
 {
@@ -22,11 +22,8 @@ class SsEffectRenderAtom;
 class SsEffectBehavior;
 class SsEffectRenderer;
 class CustomSprite;
-class SSPManager;
 
 #define PFMEM_TEST ( 1 )
-
-
 
 namespace SsRenderType
 {
@@ -374,7 +371,8 @@ public:
 };
 
 
-//-------------------------------------------------------------
+
+//----------------------------------------------------------------
 // 画面に存在できるパーティクルバッファのサイズを指定します。
 // 画面に存在できるエミッタバッファのサイズを指定します。
 //
@@ -386,8 +384,8 @@ public:
 //
 // アプリケーションの仕様に合わせて数を調整してください。
 // パーツ単位でバッファを作成するので、バッファ数を多く設定すると
-// アニメーション初期化時にバッファ確保の時間が長くなります。
-// 再生するアニメーションにエフェクトパーツがない場合は初期化が行われなわれないので負荷は発生しません。
+// アニメーション再生時にバッファ確保の時間が長くなります。
+//----------------------------------------------------------------
 //SpriteStudio本体の設定
 #define SSEFFECTRENDER_EMMITER_MAX (1024)
 #define SSEFFECTRENDER_PARTICLE_MAX (4096)
@@ -398,6 +396,9 @@ public:
 //-------------------------------------------------------------
 
 #define SSEFFECTRENDER_BACTH_MAX (256)		//ノード階層最大値（固定）
+
+
+
 
 //--------------------------------------------------------------------------
 //エフェクトの描画処理メイン
@@ -449,7 +450,6 @@ public:
 
 	//cocos2d-x用エフェクトスプライト
 	bool _isContentScaleFactorAuto;
-	SSPManager*							_SSPManeger;
 	CustomSprite						*_parentSprite;
 
 public:
@@ -462,7 +462,6 @@ public:
 	,renderTexture(false)
 	,frameDelta(0)
 	,_isContentScaleFactorAuto(true)
-	, _SSPManeger(0)
 	,_parentSprite(0)
 #endif
 	{}
@@ -517,7 +516,6 @@ public:
 
 
 	//cocos側のエフェクトスプライトを設定する
-	void setSSPManeger(SSPManager *sspmng) { _SSPManeger = sspmng; }
 	void setContentScaleEneble(bool eneble){ _isContentScaleFactorAuto = eneble; }
 	void setParentSprite(CustomSprite* sprite){ _parentSprite = sprite; }
 

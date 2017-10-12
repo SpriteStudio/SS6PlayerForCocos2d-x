@@ -1,7 +1,7 @@
 ﻿#ifndef __SSPLAYER_CELLMAP__
 #define __SSPLAYER_CELLMAP__
 
-#include "cocos2d.h"
+#include "../../SS6PlayerTypes.h"
 
 namespace ss
 {
@@ -13,8 +13,8 @@ struct SsCell
 {
 	float		pivot_X;		//原点補正
 	float		pivot_Y;		//原点補正
-	cocos2d::Texture2D* texture;
-	cocos2d::Rect rect;
+	TextuerData texture;
+	ss::SSRect	rect;
 	std::string texname;
 	int			cellIndex;
 	std::string cellName;
@@ -22,7 +22,6 @@ struct SsCell
 	SsCell():
 		  pivot_X(0)
 		, pivot_Y(0)
-		, texture(0)
 		, cellIndex(-1)
 	{}
 };

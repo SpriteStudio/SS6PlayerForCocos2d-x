@@ -1,59 +1,76 @@
 ﻿//-----------------------------------------------------------
-// SS6Player For Cocos2d-x v1.0.0
+// SS6Player for Cocos2d-x v1.0.0
 //
 // Copyright(C) Web Technology Corp.
 // http://www.webtech.co.jp/
 //-----------------------------------------------------------
 //
-//  SS6Player.h
+// SS6Player.h
 //
 
+
 /************************************************************
-Cocos2d-X Ver3.15.1に対応しています。
 対応するssbpフォーマットはバージョン5です。
-Ss6ConverterのフォーマットバージョンはSpriteStudio6SDKを参照してください。
-https://github.com/SpriteStudio/SpriteStudio6-SDK/wiki/%E3%82%B3%E3%83%B3%E3%83%90%E3%83%BC%E3%82%BF%E3%81%AE%E4%BD%BF%E3%81%84%E6%96%B9
+Ss6ConverterのフォーマットバージョンはSpriteStudio6-SDKを参照してください。
+https://github.com/SpriteStudio/SpriteStudio6-SDK
 
 - Quick start
+ 
+  #include "./SSPlayer/SS6Player.h"
 
-  #include "SS6Player.h"
+  
+  // SS6プレイヤーの宣言
+  ss::SSPlayerControl *ssplayer;
+  ss::ResourceManager *resman;
 
-  //X、Y回転を使用した場合にパースをかけない場合は
-  //applicationDidFinishLaunchingb内で平行投影の設定を行ってください。
-  director->setProjection(kCCDirectorProjection2D);
 
-  //プレイヤーが共有するエフェクトバッファを作成します。
-  //バッファは常駐されますのでゲーム起動時等に1度行ってください。
-  auto sspman = ss::SSPManager::getInstance();
-  sspman->createEffectBuffer(1024);			//エフェクト用バッファの作成
+  //プレイヤーを使用する前の初期化処理
+  //この処理はアプリケーションの初期化で１度だけ行ってください。
+  ss::SSPlatformInit();
 
-  -------
+  //リソースマネージャの作成
+  resman = ss::ResourceManager::getInstance();
+  //プレイヤーを使用する前の初期化処理ここまで
 
-  auto resman = ss::ResourceManager::getInstance();
-  resman->addData("sample.ssbp");			// ssbpの読み込み
 
-  auto ssplayer = ss::Player::create();
-  ssplayer->setData("sample");				// ssbpファイル（拡張子不要）をプレイヤーに関連づけます
-  ssplayer->play("NewAnimation/anime1");	// アニメーション名指定(ssae名/アニメーション名)
-  ssplayer->setPosition(200, 200);			// 位置設定
-  ssplayer->setAlpha(255);					// 透明度設定
-  ssplayer->setScale(1.0f,1.0f);			// 拡大率設定
-  ssplayer->setRotation(0.0f);				// Z回転値設定(度)
-  this->addChild(ssplayer);
+  //プレイヤーの作成
+  ssplayer = ss::Player::create();
+
+  //アニメデータをリソースに追加
+  //それぞれのプラットフォームに合わせたパスへ変更してください。
+  resman->addData("character_template_comipo/character_template1.ssbp");
+  //プレイヤーにリソースを割り当て
+  ssplayer->getSSPInstance()->setData("character_template1");					// ssbpファイル名（拡張子不要）
+  //再生するモーションを設定
+  ssplayer->getSSPInstance()->play("character_template_3head/stance");		// アニメーション名を指定(ssae名/アニメーション名)
+
+
+  //表示位置を設定
+  Size size = cocos2d::Director::getInstance()->getWinSize();
+  ssplayer->getSSPInstance()->setPosition(size.width / 2, size.height / 2);
+
+  //プレイヤーをゲームシーンに追加
+  this->addChild(ssplayer, 10);
+
+
+
+
+  使用するアニメーションに合わせて Playerクラス定義部分にある設定用定数を変更してください。
 
   プレイヤーの制限についてはこちらのページを参照してください。
   https://github.com/SpriteStudio/SS6PlayerForCocos2d-x/wiki
 
-  使用するアニメーションに合わせて Playerクラス定義部分にある設定用定数を変更してください。
+  使用方法についてはPlayerクラスのコメントを参照してください。
 
 *************************************************************/
 
-
-#ifndef SS6Player_h
-#define SS6Player_h
+#ifndef SSPlayer_h
+#define SSPlayer_h
 
 #include "cocos2d.h"
 #include "SS6PlayerData.h"
+#include "SS6PlayerTypes.h"
+#include "SS6PlayerPlatform.h"
 
 //エフェクト関連
 #include "./Common/loader/ssloader.h"
@@ -64,221 +81,126 @@ https://github.com/SpriteStudio/SpriteStudio6-SDK/wiki/%E3%82%B3%E3%83%B3%E3%83%
 #include "./Common/Animator/ssplayer_PartState.h"
 //#include "./Common/Animator/MersenneTwister.h"
 
-
+#pragma warning(disable : 4996)
 
 namespace ss
 {
-
+class ResourceManager;
+class CustomSprite;
 class CellCache;
 class CellRef;
 class AnimeCache;
 class AnimeRef;
-struct ResourceSet;
+class ResourceSet;
 struct ProjectData;
+class SSSize;
 class Player;
 
-//含まれるパーツデータフラグ
-enum {
-	PART_FLAG_INVISIBLE			= 1 << 0,		/// 非表示
-	PART_FLAG_FLIP_H			= 1 << 1,		/// 横反転
-	PART_FLAG_FLIP_V			= 1 << 2,		/// 縦反転
+//関数定義
+extern void get_uv_rotation(float *u, float *v, float cu, float cv, float deg);
 
-	// optional parameter flags
-	PART_FLAG_CELL_INDEX		= 1 << 3,		/// セル番号
-	PART_FLAG_POSITION_X		= 1 << 4,		/// X座標
-	PART_FLAG_POSITION_Y		= 1 << 5,		/// Y座標
-	PART_FLAG_POSITION_Z		= 1 << 6,		/// Z座標
-	PART_FLAG_PIVOT_X			= 1 << 7,		/// 原点オフセットX
-	PART_FLAG_PIVOT_Y           = 1 << 8,		/// 原点オフセットY
-	PART_FLAG_ROTATIONX			= 1 << 9,		/// X回転
-	PART_FLAG_ROTATIONY			= 1 << 10,		/// Y回転
-	PART_FLAG_ROTATIONZ			= 1 << 11,		/// Z回転
-	PART_FLAG_SCALE_X			= 1 << 12,		/// スケールX
-	PART_FLAG_SCALE_Y			= 1 << 13,		/// スケールY
-	PART_FLAG_LOCALSCALE_X		= 1 << 14,		/// ローカルスケールX
-	PART_FLAG_LOCALSCALE_Y		= 1 << 15,		/// ローカルスケールY
-	PART_FLAG_OPACITY			= 1 << 16,		/// 不透明度
-	PART_FLAG_LOCALOPACITY		= 1 << 17,		/// ローカル不透明度
-	PART_FLAG_PARTS_COLOR		= 1 << 18,		/// パーツカラー
-	PART_FLAG_VERTEX_TRANSFORM	= 1 << 19,		/// 頂点変形
-
-	PART_FLAG_SIZE_X			= 1 << 20,		/// サイズX
-	PART_FLAG_SIZE_Y			= 1 << 21,		/// サイズY
-
-	PART_FLAG_U_MOVE			= 1 << 22,		/// UV移動X
-	PART_FLAG_V_MOVE			= 1 << 23,		/// UV移動Y
-	PART_FLAG_UV_ROTATION		= 1 << 24,		/// UV回転
-	PART_FLAG_U_SCALE			= 1 << 25,		/// UVスケールX
-	PART_FLAG_V_SCALE			= 1 << 26,		/// UVスケールY
-	PART_FLAG_BOUNDINGRADIUS	= 1 << 27,		/// 当たり半径
-
-	PART_FLAG_MASK				= 1 << 28,		/// マスク強度
-	PART_FLAG_PRIORITY			= 1 << 29,		/// 優先度
-
-	PART_FLAG_INSTANCE_KEYFRAME	= 1 << 30,		/// インスタンス
-	PART_FLAG_EFFECT_KEYFRAME   = 1 << 31,		/// エフェクト
-
-	NUM_PART_FLAGS
-};
-
-//頂点変形フラグ
-enum VertexFlag
-{
-	VERTEX_FLAG_LT = 1 << 0,
-	VERTEX_FLAG_RT = 1 << 1,
-	VERTEX_FLAG_LB = 1 << 2,
-	VERTEX_FLAG_RB = 1 << 3,
-	VERTEX_FLAG_ONE = 1 << 4	// color blend only
-};
-
-//インスタンスフラグ
-enum InstanceLoopFlag
-{
-	INSTANCE_LOOP_FLAG_INFINITY = 1 << 0,
-	INSTANCE_LOOP_FLAG_REVERSE = 1 << 1,
-	INSTANCE_LOOP_FLAG_PINGPONG = 1 << 2,
-	INSTANCE_LOOP_FLAG_INDEPENDENT = 1 << 3,
-};
-
-//エフェクトアトリビュートのループフラグ
-enum EffectLoopFlag
-{
-	EFFECT_LOOP_FLAG_INDEPENDENT = 1 << 0,
-};
-
-/// Animation Part Type
-enum PartsType
-{
-	PARTTYPE_INVALID = -1,
-	PARTTYPE_NULL,			/// null。領域を持たずSRT情報のみ。ただし円形の当たり判定は設定可能。
-	PARTTYPE_NORMAL,		/// 通常パーツ。領域を持つ。画像は無くてもいい。
-	PARTTYPE_TEXT,			/// テキスト(予約　未実装）
-	PARTTYPE_INSTANCE,		/// インスタンス。他アニメ、パーツへの参照。シーン編集モードの代替になるもの
-	PARTTYPE_ARMATURE,		///< ボーンパーツ
-	PARTTYPE_EFFECT,		///< ss5.5対応エフェクトパーツ
-	PARTTYPE_MESH,			///< メッシュパーツ
-	PARTTYPE_MOVENODE,		///< 動作起点
-	PARTTYPE_CONSTRAINT,	///< コンストレイント
-	PARTTYPE_MASK,			///< マスク
-	PARTTYPE_JOINT,			///< メッシュとボーンの関連付けパーツ
-	PARTTYPE_BONEPOINT,		///< ボーンポイント
-	PARTTYPE_NUM
-};
-
-//当たり判定の種類
-enum CollisionType
-{
-	INVALID = -1,
-	NONE,			///< 当たり判定として使わない。
-	QUAD,			///< 自在に変形する四辺形。頂点変形など適用後の４角を結んだ領域。最も重い。
-	AABB,			///< 回転しない全体を囲む矩形で交差判定
-	CIRCLE,			///< 真円の半径で距離により判定する
-	CIRCLE_SMIN,	///< 真円の半径で距離により判定する (スケールはx,yの最小値をとる）
-	CIRCLE_SMAX,	///< 真円の半径で距離により判定する (スケールはx,yの最大値をとる）
-	num
-};
-
-//αブレンド方法
-enum BlendType
-{
-	BLEND_MIX,		///< 0 ブレンド（ミックス）
-	BLEND_MUL,		///< 1 乗算
-	BLEND_ADD,		///< 2 加算
-	BLEND_SUB,		///< 3 減算
-	BLEND_MULALPHA, ///< 4 α乗算
-	BLEND_SCREEN, 	///< 5 スクリーン
-	BLEND_EXCLUSION,///< 6 除外
-	BLEND_INVERT, 	///< 7 反転
-	BLEND_NUM,
-};
-/*
-Common\Loader\sstypes.hに実際の定義があります。
-/// テクスチャラップモード
-namespace SsTexWrapMode
-{
-	enum _enum
-	{
-		invalid = -1,	/// なし
-		clamp,			/// クランプする
-		repeat,			/// リピート
-		mirror,			/// ミラー
-		num
-	};
-};
-
-/// テクスチャフィルターモード 画素補間方法
-namespace SsTexFilterMode
-{
-	enum _enum
-	{
-		invalid = -1,
-		nearlest,	///< ニアレストネイバー
-		linear,		///< リニア、バイリニア
-		num
-	};
-};
+/**
+* 定数
 */
 
-//カラーラベル定数
-#define COLORLABELSTR_NONE		""
-#define COLORLABELSTR_RED		"Red"
-#define COLORLABELSTR_ORANGE	"Orange"
-#define COLORLABELSTR_YELLOW	"Yellow"
-#define COLORLABELSTR_GREEN		"Green"
-#define COLORLABELSTR_BLUE		"Blue"
-#define COLORLABELSTR_VIOLET	"Violet"
-#define COLORLABELSTR_GRAY		"Gray"
-enum 
+#define __SSPI__	(3.14159265358979323846f)
+#define __SS2PI__	(__SSPI__ * 2)
+#define SSRadianToDegree(Radian) ((float)( Radian * __SS2PI__ )/ 360.0f )
+#define SSDegreeToRadian(Degree) ((float)( Degree * 360.0f) / __SS2PI__)
+
+
+#define SS_SAFE_DELETE(p)            do { if(p) { delete (p); (p) = 0; } } while(0)
+#define SS_SAFE_DELETE_ARRAY(p)     do { if(p) { delete[] (p); (p) = 0; } } while(0)
+#define SS_SAFE_FREE(p)                do { if(p) { free(p); (p) = 0; } } while(0)
+#define SS_SAFE_RELEASE(p)            do { if(p) { (p)->release(); } } while(0)
+#define SS_SAFE_RELEASE_NULL(p)        do { if(p) { (p)->release(); (p) = 0; } } while(0)
+#define SS_SAFE_RETAIN(p)            do { if(p) { (p)->retain(); } } while(0)
+#define SS_BREAK_IF(cond)            if(cond) break
+
+#ifdef _DEBUG
+	#define SSLOG(...)       do {} while (0)
+	#define SS_ASSERT(cond)    assert(cond)
+	#define SS_ASSERT2(cond, msg) SS_ASSERT(cond)
+	#define SSLOGERROR(format,...)  do {} while (0)
+#else
+	#define SSLOG(...)       do {} while (0)
+	#define SS_ASSERT(cond)
+	#define SS_ASSERT2(cond, msg) ((void)(cond))
+	#define SSLOGERROR(format,...)  do {} while (0)
+#endif
+
+/**
+* SSPlayerControl 
+  Cocos2d-xからSSPlayerを使用するためのラッパークラス
+  アプリケーション側はSSPlayerControlを作成し、getSSPInstance()を経由してプレイヤーを操作します
+*/
+class SSPlayerControl : public cocos2d::Sprite
 {
-	COLORLABEL_NONE,		///< 0 なし
-	COLORLABEL_RED,			///< 1 赤
-	COLORLABEL_ORANGE,		///< 2 オレンジ
-	COLORLABEL_YELLOW,		///< 3 黄色
-	COLORLABEL_GREEN,		///< 4 緑
-	COLORLABEL_BLUE,		///< 5 青
-	COLORLABEL_VIOLET,		///< 6 紫
-	COLORLABEL_GRAY,		///< 7 灰色
+public:
+	/**
+	* SSPlayerControlインスタンスを構築します.
+	*
+	* @param  resman  使用するResourceManagerインスタンス. 省略時はデフォルトインスタンスが使用されます.
+	* @return Playerインスタンス
+	*/
+	static SSPlayerControl* create(ResourceManager* resman = nullptr);
+
+	/**
+	* Playerのポインタを取得します.
+	* SS6Player for Cocos2d-xでは　ssplayer->getSSPInstance()->play("") のように
+	* getSSPInstance()を経由してプレイヤーにアクセスします
+	* プレイヤーの使用方法については Player クラスのコメントを参照してください。
+	*
+	* @return Playerインスタンス
+	*/
+	Player *getSSPInstance();
+
+public:
+	SSPlayerControl();
+	~SSPlayerControl();
+
+	virtual bool init();
+	virtual void update(float dt);
+	virtual void draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transform, uint32_t flags);
+
+	void onDraw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transform, uint32_t flags);
+
+private:
+	Player *_ssp;
+	cocos2d::CustomCommand _customCommand;
 };
-
-//------------------------------------------------------------------------------
-//プレイヤーの設定定義
-//使用するアニメーションに合わせて設定してください。
-
-//プレイヤーで扱えるアニメに含まれるパーツの最大数
-#define PART_VISIBLE_MAX (1024)
-
-//------------------------------------------------------------------------------
 
 /**
 * State
+パーツの情報を格納します。Stateの内容をもとに描画処理を作成してください。
 */
 struct State
 {
 	std::string name;				/// パーツ名
 	int flags;						/// このフレームで更新が行われるステータスのフラグ
 	int cellIndex;					/// パーツに割り当てられたセルの番号
-	float x;						/// アトリビュート：X座標
-	float y;						/// アトリビュート：Y座標
-	float z;						/// アトリビュート：Z座標
+	float x;						/// SS5アトリビュート：X座標
+	float y;						/// SS5アトリビュート：Y座標
+	float z;						/// SS5アトリビュート：Z座標
 	float pivotX;					/// 原点Xオフセット＋セルに設定された原点オフセットX
 	float pivotY;					/// 原点Yオフセット＋セルに設定された原点オフセットY
-	float rotationX;				/// X回転（親子関係計算済）
-	float rotationY;				/// Y回転（親子関係計算済）
-	float rotationZ;				/// Z回転（親子関係計算済）
-	float scaleX;					/// Xスケール（親子関係計算済）
-	float scaleY;					/// Yスケール（親子関係計算済）
+	float rotationX;				/// X回転
+	float rotationY;				/// Y回転
+	float rotationZ;				/// Z回転
+	float scaleX;					/// Xスケール
+	float scaleY;					/// Yスケール
 	float localscaleX;				/// Xローカルスケール
 	float localscaleY;				/// Yローカルスケール
-	int opacity;					/// 不透明度（0～255）（親子関係計算済）
+	int opacity;					/// 不透明度（0～255）
 	int localopacity;				/// ローカル不透明度（0～255）
-	float size_X;					/// アトリビュート：Xサイズ
-	float size_Y;					/// アトリビュート：Xサイズ
-	float uv_move_X;				/// アトリビュート：UV X移動
-	float uv_move_Y;				/// アトリビュート：UV Y移動
-	float uv_rotation;				/// アトリビュート：UV 回転
-	float uv_scale_X;				/// アトリビュート：UV Xスケール
-	float uv_scale_Y;				/// アトリビュート：UV Yスケール
-	float boundingRadius;			/// アトリビュート：当たり半径
+	float size_X;					/// SS5アトリビュート：Xサイズ
+	float size_Y;					/// SS5アトリビュート：Xサイズ
+	float uv_move_X;				/// SS5アトリビュート：UV X移動
+	float uv_move_Y;				/// SS5アトリビュート：UV Y移動
+	float uv_rotation;				/// SS5アトリビュート：UV 回転
+	float uv_scale_X;				/// SS5アトリビュート：UV Xスケール
+	float uv_scale_Y;				/// SS5アトリビュート：UV Yスケール
+	float boundingRadius;			/// SS5アトリビュート：当たり半径
 	int partsColorFunc;				/// SS5アトリビュート：パーツカラーのブレンド方法
 	int partsColorType;				/// SS5アトリビュート：パーツカラーの単色か頂点カラーか。
 	int masklimen;					/// マスク強度
@@ -286,9 +208,18 @@ struct State
 	bool flipX;						/// 横反転（親子関係計算済）
 	bool flipY;						/// 縦反転（親子関係計算済）
 	bool isVisibled;				/// 非表示（親子関係計算済）
-	float instancerotationX;		/// インスタンスパーツに設定されたX回転
-	float instancerotationY;		/// インスタンスパーツに設定されたY回転
-	float instancerotationZ;		/// インスタンスパーツに設定されたZ回転
+	SSV3F_C4B_T2F_Quad quad;		/// 頂点データ、座標、カラー値、UVが含まれる（頂点変形、サイズXY、UV移動XY、UVスケール、UV回転、反転が反映済）
+	TextuerData texture;			/// セルに対応したテクスチャ番号（ゲーム側で管理している番号を設定する）
+	SSRect rect;					/// セルに対応したテクスチャ内の表示領域（開始座標、幅高さ）
+	int blendfunc;					/// パーツに設定されたブレンド方法
+	float mat[16];					/// パーツの位置を算出するためのマトリクス（親子関係計算済）
+	//再生用パラメータ
+	float Calc_rotationX;			/// X回転（親子関係計算済）
+	float Calc_rotationY;			/// Y回転（親子関係計算済）
+	float Calc_rotationZ;			/// Z回転（親子関係計算済）
+	float Calc_scaleX;				/// Xスケール（親子関係計算済）
+	float Calc_scaleY;				/// Yスケール（親子関係計算済）
+	int Calc_opacity;				/// 不透明度（0～255）（親子関係計算済）
 	//インスタンスアトリビュート
 	int			instanceValue_curKeyframe;
 	int			instanceValue_startFrame;
@@ -335,9 +266,16 @@ struct State
 		flipX = false;
 		flipY = false;
 		isVisibled = false;
-		instancerotationX = 0.0f;
-		instancerotationY = 0.0f;
-		instancerotationZ = 0.0f;
+		memset(&quad, 0, sizeof(quad));
+		texture.handle = 0;
+		texture.size_w = 0;
+		texture.size_h = 0;
+		rect.size.height = 0;
+		rect.size.width = 0;
+		rect.origin.x = 0;
+		rect.origin.y = 0;
+		blendfunc = 0;
+		memset(&mat, 0, sizeof(mat));
 		instanceValue_curKeyframe = 0;
 		instanceValue_startFrame = 0;
 		instanceValue_endFrame = 0;
@@ -348,6 +286,14 @@ struct State
 		effectValue_startTime = 0;
 		effectValue_speed = 0;
 		effectValue_loopflag = 0;
+
+		Calc_rotationX = 0.0f;
+		Calc_rotationY = 0.0f;
+		Calc_rotationZ = 0.0f;
+		Calc_scaleX = 1.0f;
+		Calc_scaleY = 1.0f;
+		Calc_opacity = 255;
+
 	}
 
 	State() { init(); }
@@ -356,29 +302,29 @@ struct State
 /**
 * CustomSprite
 */
-class CustomSprite : public cocos2d::Sprite
+class CustomSprite
 {
 private:
-	void setupPartsColorTextureCombiner(BlendType blendType, VertexFlag colorBlendTarget);
-	void drawPart(CustomSprite* sprite);
-	cocos2d::GLProgram* getCustomShaderProgram();
 
 private:
 	float				_opacity;
 	int					_hasPremultipliedAlpha;
+	bool				_flipX;
+	bool				_flipY;
+
 public:
-	ss::Player*			_parentPlayer;
-	cocos2d::Mat4		_mat;
-	cocos2d::Mat4		_localmat;
+	float				_mat[16];		//継承マトリクス
+	float				_localmat[16];	//ローカルマトリクス
 	State				_state;
 	bool				_isStateChanged;
 	CustomSprite*		_parent;
-	ss::Player*			_ssplayer;
+	Player*				_ssplayer;
 	float				_liveFrame;
+	SSV3F_C4B_T2F_Quad	_sQuad;
 
 	PartData			_partData;
 	bool				_maskInfluence;		//親パーツのマスク対象を加味したマスク対象
-											
+
 	//エフェクト用パラメータ
 	SsEffectRenderV2*	refEffect;
 	SsPartState			partState;
@@ -389,10 +335,7 @@ public:
 	//エフェクト制御用ワーク
 	bool effectAttrInitialized;
 	float effectTimeTotal;
-	bool _isEffectSprite;
 
-	cocos2d::GLProgram*	_defaultShaderProgram;
-	cocos2d::GLProgram*	_customShaderProgram;
 public:
 	CustomSprite();
 	virtual ~CustomSprite();
@@ -401,7 +344,6 @@ public:
 
 	void initState()
 	{
-		_mat = cocos2d::Mat4::IDENTITY;
 		_state.init();
 		_isStateChanged = true;
 	}
@@ -414,6 +356,7 @@ public:
 			_isStateChanged = true;
 		}
 	}
+
 	void setStateValue(int& ref, int value)
 	{
 		if (ref != value)
@@ -426,6 +369,15 @@ public:
 	void setStateValue(bool& ref, bool value)
 	{
 		if (ref != value)
+		{
+			ref = value;
+			_isStateChanged = true;
+		}
+	}
+
+	void setStateValue(SSV3F_C4B_T2F_Quad& ref, SSV3F_C4B_T2F_Quad value)
+	{
+		//		if (ref != value)
 		{
 			ref = value;
 			_isStateChanged = true;
@@ -464,12 +416,14 @@ public:
 		setStateValue(_state.isVisibled, state.isVisibled);
 		setStateValue(_state.flipX, state.flipX);
 		setStateValue(_state.flipY, state.flipY);
+		setStateValue(_state.blendfunc, state.blendfunc);
 		setStateValue(_state.partsColorFunc, state.partsColorFunc);
 		setStateValue(_state.partsColorType, state.partsColorType);
 
-		setStateValue(_state.instancerotationX, state.instancerotationX);
-		setStateValue(_state.instancerotationY, state.instancerotationY);
-		setStateValue(_state.instancerotationZ, state.instancerotationZ);
+		setStateValue(_state.quad, state.quad);
+		_state.texture = state.texture;
+		_state.rect = state.rect;
+		memcpy(&_state.mat, &state.mat, sizeof(_state.mat));
 
 		setStateValue(_state.instanceValue_curKeyframe, state.instanceValue_curKeyframe);
 		setStateValue(_state.instanceValue_startFrame, state.instanceValue_startFrame);
@@ -481,48 +435,46 @@ public:
 		setStateValue(_state.effectValue_startTime, state.effectValue_startTime);
 		setStateValue(_state.effectValue_speed, state.effectValue_speed);
 		setStateValue(_state.effectValue_loopflag, state.effectValue_loopflag);
-	}
 
-	//マトリクスの更新フラグを設定する
-	void Set_transformDirty()
-	{
-		/*
-		cocos2d-x Ver3.13.1から
-		void Node::setAdditionalTransform(const Mat4* additionalTransform)の内部で
-		_transformDirtyフラグが立たなくなったので、個別に設定する
-		*/
-		_transformDirty = true;
+		_state.Calc_rotationX = state.Calc_rotationX;
+		_state.Calc_rotationY = state.Calc_rotationY;
+		_state.Calc_rotationZ = state.Calc_rotationZ;
+		_state.Calc_scaleX = state.Calc_scaleX;
+		_state.Calc_scaleY = state.Calc_scaleY;
+		_state.Calc_opacity = state.Calc_opacity;
+
 	}
 
 
 	// override
-	virtual void draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transform, uint32_t flags);
-	virtual void setOpacity(GLubyte opacity);
+	virtual void setOpacity(unsigned char opacity);
 
 	// original functions
-	void setDefaultShaderProgram(void);
-	cocos2d::V3F_C4B_T2F_Quad& getAttributeRef();
+	SSV3F_C4B_T2F_Quad& getAttributeRef();
+
+	void setFlippedX(bool flip);
+	void setFlippedY(bool flip);
+	bool isFlippedX();
+	bool isFlippedY();
 	void sethasPremultipliedAlpha(int PremultipliedAlpha);
 
 public:
-	// override
-	virtual const cocos2d::Mat4& getNodeToParentTransform() const;
 };
 
-/**
-* SSRenderTexture
-*/
-class SSRenderTexture : public cocos2d::RenderTexture
-{
-public:
-	virtual void draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transform, uint32_t flags);
-	static  SSRenderTexture* create(int w, int h);
-};
 
 /**
  * ResourceManager
  */
-class ResourceManager : public cocos2d::Ref
+//正方向の指定
+//SSSetPlusDirectionの初期化に使用します。
+//プレイヤー内部ではSpriteStudioに準拠し上を正方向として処理します。
+//使用するプラットフォームのY座標系が下が正方向の場合にPLUS_DOWNを指定して初期化してください。
+enum {
+	PLUS_UP,	//上が正方向
+	PLUS_DOWN	//下が正方向
+};
+
+class ResourceManager
 {
 public:
 	static const std::string s_null;
@@ -540,7 +492,6 @@ public:
 	 *
 	 * @param  ssbpFilepath  ssbpファイルのパス
 	 * @param  imageBaseDir  画像ファイルの読み込み元ルートパス. 省略時はssbpのある場所をルートとします.
-	 *                       解像度によって画像ファイルを差し替える時などに使用してください。
 	 * @return dataKey
 	 */
 	std::string addData(const std::string& ssbpFilepath, const std::string& imageBaseDir = s_null);
@@ -567,22 +518,16 @@ public:
 	
 	/**
 	 * 指定データを解放します.
-	 * 指定したssbpファイルで管理しているテクスチャも解放されます。
 	 * パス、拡張子を除いたssbp名を指定してください。
 	 *
 	 * @param  dataKey
 	 */
-	void removeData(const std::string& ssbpName);
+	void removeData(const std::string& dataKey);
 
 	/**
-	 * ssbp、テクスチャなどの全てのデータを解放します.
+	 * 全てのデータを解放します.
 	 */
 	void removeAllData();
-
-	/**
-	* 指定したssbpで読み込まれたテクスチャを解放します.
-	*/
-	bool releseTexture(char* ssbpName);
 
 	/**
 	* 名前に対応するデータ取得します.
@@ -590,30 +535,31 @@ public:
 	ResourceSet* getData(const std::string& dataKey);
 
 	/**
+	* ssbpに含まれるアニメーション名を取得します.
+	*/
+	std::vector<std::string> getAnimeName(const std::string& dataKey);
+		
+	/**
 	* 指定したセルのテクスチャを変更します.
 	* @param  ssbpName       ssbp名（拡張子を除くファイル名）
 	* @param  ssceName       ssce名（拡張子を除くファイル名）
-	* @param  texture        変更後のテクスチャ
-    *                        テクスチャはポインタを参照するだけなので、使用する側で実体を管理する必要があります。
+	* @param  texture        変更後のテクスチャハンドル
 	* @return 変更を行ったか
 	*/
-	bool changeTexture(char* ssbpName, char* ssceName, cocos2d::Texture2D* texture);
+	bool changeTexture(char* ssbpName, char* ssceName, long texture);
 
 	/**
-	* セルとして読み込んだテクスチャを取得します.
-	* @param  ssbpName       ssbp名（拡張子を除くファイル名）
-	* @param  ssceName       ssce名（拡張子を除くファイル名）
-	* @return テクスチャのポインタ
+	* 指定したデータのテクスチャを破棄します。
+	* @param  dataName       ssbp名（拡張子を除くファイル名）
+	* @return 成功失敗
 	*/
-	cocos2d::Texture2D* getTexture(char* ssbpName, char* ssceName);
+	bool releseTexture(char* ssbpName);
 
 	/**
 	* 読み込んでいるssbpからアニメーションの開始フレーム数を取得します。
-	* 読み込んでいるssbpからアニメーションの総フレーム数を取得します。
 	* @param  ssbpName       ssbp名（拡張子を除くファイル名）
 	* @param  animeName      ssae/モーション名
 	* @return アニメーションの開始フレーム（存在しない場合はアサート）
-	* @return アニメーションの総フレーム（存在しない場合はアサート）
 	*/
 	int getStartFrame(std::string ssbpName, std::string animeName);
 
@@ -648,7 +594,6 @@ public:
 	 */
 	static ResourceManager* create();
 
-
 public:
 	ResourceManager(void);
 	virtual ~ResourceManager();
@@ -658,80 +603,6 @@ protected:
 };
 
 
-/**
-* SSPManager
-*/
-class SSPManager : public cocos2d::Ref
-{
-public:
-
-	/**
-	* デフォルトインスタンスを取得します.
-	*
-	* @return デフォルトのSSPManagerインスタンス
-	*/
-	static SSPManager* getInstance();
-
-	/**
-	* マネージャ定時処理
-	* 各シーンのアップデートで必ず呼び出してください。
-	* 
-	*/
-	void update();
-
-	/**
-	* 新たなSSPManagerインスタンスを構築します.
-	*
-	* @return SSPManagerインスタンス
-	*/
-	static SSPManager* create();
-
-	/**
-	* エフェクト用バッファを作成します。
-	* この関数を呼び出さない場合エフェクトは表示されません。
-	* 作成したバッファを全プレイヤーで共用します。
-	* バッファサイズを超える個数のパーティクルが表示されると途中から表示されなくなります。
-	* エフェクト機能を使用する場合はゲームの初期化等で1度呼び出してください。
-	* 再度呼び出すと使用するバッファをリサイズします。
-	*
-	* @param  buffSize       作成するバッファサイズ
-	*/
-	void createEffectBuffer( int buffSize = 1024);
-
-
-	/**
-	* 空いているエフェクト用バッファを取得します。
-	* プレイヤー内部で使用されます。ゲームから呼び出す必要はありません
-	*/
-	CustomSprite* getEffectBuffer();
-
-	/**
-	* 次回アップデートが必要な事を設定します。
-	* プレイヤー内部で使用されます。ゲームから呼び出す必要はありません
-	*/
-	void setUpdateFlag();
-
-	/**
-	* オフスクリーンレンダリング中かを設定します。
-	* プレイヤー内部で使用されます。ゲームから呼び出す必要はありません
-	*/
-	void setUseOffscreenRendering(bool use);
-
-
-public:
-	SSPManager(void);
-	virtual ~SSPManager();
-
-
-protected:
-	//エフェクト用データ
-	cocos2d::Vector<CustomSprite*>	_effectSprite;		
-	int								_effectSpriteCount;	
-	bool							_isUpdate;
-	bool							_useOffscreenRendering;
-
-	void releseEffectBuffer();
-};
 
 /**
  * UserData
@@ -745,15 +616,15 @@ struct UserData
 		FLAG_STRING		= 1 << 3
 	};
 
-	const char*	partName;		// Part name
-	int			frameNo;		// Frame no
+	const char*	partName;		/// Part name
+	int			frameNo;		/// Frame no
 
-	int			flags;			// Flags of valid data
-	int			integer;		// Integer
-	int			rect[4];		// Rectangle Left, Top, Right, Bottom
-	int			point[2];		// Position X, Y
-	const char*	str;			// String (zero terminated)
-	int			strSize;		// String size (byte count)
+	int			flags;			/// Flags of valid data
+	int			integer;		/// Integer
+	int			rect[4];		/// Rectangle Left, Top, Right, Bottom
+	int			point[2];		/// Position X, Y
+	const char*	str;			/// String (zero terminated)
+	int			strSize;		/// String size (byte count)
 };
 
 
@@ -762,11 +633,12 @@ struct UserData
 */
 struct LabelData
 {
-	std::string	str;			// String (zero terminated)
-	int			strSize;		// String size (byte count)
-	int			frameNo;		// Frame no
+	std::string	str;			/// String (zero terminated)
+	int			strSize;		/// String size (byte count)
+	int			frameNo;		/// Frame no
 };
 
+//インスタンスデータ
 struct Instance
 {
 	int			refStartframe;		//開始フレーム
@@ -790,37 +662,38 @@ struct Instance
 	}
 };
 
+
 /**
 * ResluteState
+* ゲーム側に返すパーツステータス。
+* 必要に応じてカスタマイズしてください。
 */
 struct ResluteState
 {
 	int flags;						/// このフレームで更新が行われるステータスのフラグ
 	int cellIndex;					/// パーツに割り当てられたセルの番号
-	float x;						/// 画面上での表示位置X
-	float y;						/// 画面上での表示位置Y
-	float z;						/// アトリビュート：Z座標
+	float x;						/// SS5アトリビュート：X座標
+	float y;						/// SS5アトリビュート：Y座標
+	float z;						/// SS5アトリビュート：Z座標
 	float pivotX;					/// 原点Xオフセット＋セルに設定された原点オフセットX
 	float pivotY;					/// 原点Yオフセット＋セルに設定された原点オフセットY
-	float rotationX;				/// アトリビュート：X回転
-	float rotationY;				/// アトリビュート：Y回転
-	float rotationZ;				/// アトリビュート：Z回転
-	float scaleX;					/// アトリビュート：Xスケール
-	float scaleY;					/// アトリビュート：Yスケール
+	float rotationX;				/// X回転（親子関係計算済）
+	float rotationY;				/// Y回転（親子関係計算済）
+	float rotationZ;				/// Z回転（親子関係計算済）
+	float scaleX;					/// Xスケール（親子関係計算済）
+	float scaleY;					/// Yスケール（親子関係計算済）
 	float localscaleX;				/// Xローカルスケール
 	float localscaleY;				/// Yローカルスケール
 	int opacity;					/// 不透明度（0～255）（親子関係計算済）
 	int localopacity;				/// ローカル不透明度（0～255）
-	float size_X;					/// アトリビュート：Xサイズ
-	float size_Y;					/// アトリビュート：Yサイズ
-	float scaledsize_X;				/// 画面上のXサイズ
-	float scaledsize_Y;				/// 画面上のYサイズ
-	float uv_move_X;				/// アトリビュート：UV X移動
-	float uv_move_Y;				/// アトリビュート：UV Y移動
-	float uv_rotation;				/// アトリビュート：UV 回転
-	float uv_scale_X;				/// アトリビュート：UV Xスケール
-	float uv_scale_Y;				/// アトリビュート：UV Yスケール
-	float boundingRadius;			/// アトリビュート：当たり半径
+	float size_X;					/// SS6アトリビュート：Xサイズ
+	float size_Y;					/// SS6アトリビュート：Xサイズ
+	float uv_move_X;				/// SS6アトリビュート：UV X移動
+	float uv_move_Y;				/// SS6アトリビュート：UV Y移動
+	float uv_rotation;				/// SS6アトリビュート：UV 回転
+	float uv_scale_X;				/// SS6アトリビュート：UV Xスケール
+	float uv_scale_Y;				/// SS6アトリビュート：UV Yスケール
+	float boundingRadius;			/// SS6アトリビュート：当たり半径
 	int	priority;					/// SS6アトリビュート：優先度
 	int partsColorFunc;				/// SS6アトリビュート：カラーブレンドのブレンド方法
 	int partsColorType;				/// SS6アトリビュート：カラーブレンドの単色か頂点カラーか。
@@ -828,48 +701,229 @@ struct ResluteState
 	bool flipY;						/// 縦反転（親子関係計算済）
 	bool isVisibled;				/// 非表示（親子関係計算済）
 
-	int	part_type;					//パーツ種別
-	int	part_boundsType;			//当たり判定種類
-	int	part_alphaBlendType;		// BlendType
-	int	part_labelcolor;			// ラベルカラー
+	int	part_type;					/// パーツ種別
+	int	part_boundsType;			/// 当たり判定種類
+	int	part_alphaBlendType;		/// BlendType
+	int	part_labelcolor;			/// ラベルカラー
 };
+
+/**
+* 再生するフレームに含まれるパーツデータのフラグ
+*/
+enum {
+	PART_FLAG_INVISIBLE			= 1 << 0,		/// 非表示
+	PART_FLAG_FLIP_H			= 1 << 1,		/// 横反転
+	PART_FLAG_FLIP_V			= 1 << 2,		/// 縦反転
+
+	// optional parameter flags
+	PART_FLAG_CELL_INDEX		= 1 << 3,		/// セル番号
+	PART_FLAG_POSITION_X		= 1 << 4,		/// X座標
+	PART_FLAG_POSITION_Y		= 1 << 5,		/// Y座標
+	PART_FLAG_POSITION_Z		= 1 << 6,		/// Z座標
+	PART_FLAG_PIVOT_X			= 1 << 7,		/// 原点オフセットX
+	PART_FLAG_PIVOT_Y           = 1 << 8,		/// 原点オフセットY
+	PART_FLAG_ROTATIONX			= 1 << 9,		/// X回転
+	PART_FLAG_ROTATIONY			= 1 << 10,		/// Y回転
+	PART_FLAG_ROTATIONZ			= 1 << 11,		/// Z回転
+	PART_FLAG_SCALE_X			= 1 << 12,		/// スケールX
+	PART_FLAG_SCALE_Y			= 1 << 13,		/// スケールY
+	PART_FLAG_LOCALSCALE_X		= 1 << 14,		/// ローカルスケールX
+	PART_FLAG_LOCALSCALE_Y		= 1 << 15,		/// ローカルスケールY
+	PART_FLAG_OPACITY			= 1 << 16,		/// 不透明度
+	PART_FLAG_LOCALOPACITY		= 1 << 17,		/// ローカル不透明度
+	PART_FLAG_PARTS_COLOR		= 1 << 18,		/// パーツカラー
+	PART_FLAG_VERTEX_TRANSFORM	= 1 << 19,		/// 頂点変形
+
+	PART_FLAG_SIZE_X			= 1 << 20,		/// サイズX
+	PART_FLAG_SIZE_Y			= 1 << 21,		/// サイズY
+
+	PART_FLAG_U_MOVE			= 1 << 22,		/// UV移動X
+	PART_FLAG_V_MOVE			= 1 << 23,		/// UV移動Y
+	PART_FLAG_UV_ROTATION		= 1 << 24,		/// UV回転
+	PART_FLAG_U_SCALE			= 1 << 25,		/// UVスケールX
+	PART_FLAG_V_SCALE			= 1 << 26,		/// UVスケールY
+	PART_FLAG_BOUNDINGRADIUS	= 1 << 27,		/// 当たり半径
+
+	PART_FLAG_MASK				= 1 << 28,		/// マスク強度
+	PART_FLAG_PRIORITY			= 1 << 29,		/// 優先度
+
+	PART_FLAG_INSTANCE_KEYFRAME	= 1 << 30,		/// インスタンス
+	PART_FLAG_EFFECT_KEYFRAME   = 1 << 31,		/// エフェクト
+
+	NUM_PART_FLAGS
+};
+
+/**
+* 頂点変形フラグ
+*/
+enum VertexFlag 
+{
+	VERTEX_FLAG_LT = 1 << 0,
+	VERTEX_FLAG_RT = 1 << 1,
+	VERTEX_FLAG_LB = 1 << 2,
+	VERTEX_FLAG_RB = 1 << 3,
+	VERTEX_FLAG_ONE = 1 << 4	// color blend only
+};
+
+/**
+* インスタンスループ設定フラグ
+*/
+enum InstanceLoopFlag  
+{
+	INSTANCE_LOOP_FLAG_INFINITY = 1 << 0,		//
+	INSTANCE_LOOP_FLAG_REVERSE = 1 << 1,
+	INSTANCE_LOOP_FLAG_PINGPONG = 1 << 2,
+	INSTANCE_LOOP_FLAG_INDEPENDENT = 1 << 3,
+};
+
+//エフェクトアトリビュートのループフラグ
+enum EffectLoopFlag  
+{
+	EFFECT_LOOP_FLAG_INDEPENDENT = 1 << 0,
+};
+
+/**
+* Animation Part Type
+*/
+enum PartsType
+{
+	PARTTYPE_INVALID = -1,
+	PARTTYPE_NULL,			/// null。領域を持たずSRT情報のみ。ただし円形の当たり判定は設定可能。
+	PARTTYPE_NORMAL,		/// 通常パーツ。領域を持つ。画像は無くてもいい。
+	PARTTYPE_TEXT,			/// テキスト(予約　未実装）
+	PARTTYPE_INSTANCE,		/// インスタンス。他アニメ、パーツへの参照。シーン編集モードの代替になるもの
+	PARTTYPE_ARMATURE,		///< ボーンパーツ
+	PARTTYPE_EFFECT,		// ss5.5対応エフェクトパーツ
+	PARTTYPE_MESH,			///< メッシュパーツ
+	PARTTYPE_MOVENODE,		///< 動作起点
+	PARTTYPE_CONSTRAINT,		///<コンストレイント
+	PARTTYPE_MASK,			///< マスク
+	PARTTYPE_JOINT,			///< メッシュとボーンの関連付けパーツ
+	PARTTYPE_BONEPOINT,		///< ボーンポイント
+	PARTTYPE_NUM
+};
+
+/*
+* 当たり判定の種類
+*/
+enum CollisionType
+{
+	INVALID = -1,
+	NONE,			///< 当たり判定として使わない。
+	QUAD,			///< 自在に変形する四辺形。頂点変形など適用後の４角を結んだ領域。最も重い。
+	AABB,			///< 回転しない全体を囲む矩形で交差判定
+	CIRCLE,			///< 真円の半径で距離により判定する
+	CIRCLE_SMIN,	///< 真円の半径で距離により判定する (スケールはx,yの最小値をとる）
+	CIRCLE_SMAX,	///< 真円の半径で距離により判定する (スケールはx,yの最大値をとる）
+	num
+};
+
+/**
+* αブレンド方法
+*/
+enum BlendType
+{
+	BLEND_MIX,		///< 0 ブレンド（ミックス）
+	BLEND_MUL,		///< 1 乗算
+	BLEND_ADD,		///< 2 加算
+	BLEND_SUB,		///< 3 減算
+	BLEND_MULALPHA, ///< 4 α乗算
+	BLEND_SCREEN, 	///< 5 スクリーン
+	BLEND_EXCLUSION,///< 6 除外
+	BLEND_INVERT, 	///< 7 反転
+	BLEND_NUM,
+};
+
+/*
+Common\Loader\sstypes.hに実際の定義があります。
+/// テクスチャラップモード
+namespace SsTexWrapMode
+{
+	enum _enum
+	{
+		invalid = -1,	/// なし
+		clamp,			/// クランプする
+		repeat,			/// リピート
+		mirror,			/// ミラー
+		num
+	};
+};
+
+/// テクスチャフィルターモード 画素補間方法
+namespace SsTexFilterMode
+{
+	enum _enum
+	{
+		invalid = -1,
+		nearlest,	///< ニアレストネイバー
+		linear,		///< リニア、バイリニア
+		num
+	};
+};
+*/
+
+//カラーラベル定数
+#define COLORLABELSTR_NONE		""
+#define COLORLABELSTR_RED		"Red"
+#define COLORLABELSTR_ORANGE	"Orange"
+#define COLORLABELSTR_YELLOW	"Yellow"
+#define COLORLABELSTR_GREEN		"Green"
+#define COLORLABELSTR_BLUE		"Blue"
+#define COLORLABELSTR_VIOLET	"Violet"
+#define COLORLABELSTR_GRAY		"Gray"
+enum
+{
+	COLORLABEL_NONE,		///< 0 なし
+	COLORLABEL_RED,			///< 1 赤
+	COLORLABEL_ORANGE,		///< 2 オレンジ
+	COLORLABEL_YELLOW,		///< 3 黄色
+	COLORLABEL_GREEN,		///< 4 緑
+	COLORLABEL_BLUE,		///< 5 青
+	COLORLABEL_VIOLET,		///< 6 紫
+	COLORLABEL_GRAY,		///< 7 灰色
+};
+
+//------------------------------------------------------------------------------
+//プレイヤーの設定定義
+//使用するアニメーションに合わせて設定してください。
+
+
+//プレイヤーで扱えるアニメに含まれるパーツの最大数
+#define PART_VISIBLE_MAX (512)
+
+//このサンプルでは3D機能を使用して描画します。
+//それぞれのプラットフォームに合わせた座標系で使用してください。
+//座標系を反転させる場合はsetPositionで画面サイズから引いた座標を設定して運用するといいと思います。
+
+//------------------------------------------------------------------------------
 
 
 /**
  * Player
  */
-class Player : public cocos2d::Sprite
+class Player
 {
 public:
-
 	/**
 	 * Playerインスタンスを構築します.
 	 *
 	 * @param  resman  使用するResourceManagerインスタンス. 省略時はデフォルトインスタンスが使用されます.
 	 * @return Playerインスタンス
 	 */
-	static Player* create(ResourceManager* resman = nullptr);
+	static Player* create(ResourceManager* resman = NULL);
 
 	/**
 	 * 使用するResourceManagerインスタンスを設定します.
 	 *
 	 * @param  resman  使用するResourceManagerインスタンス. 省略時はデフォルトインスタンスが使用されます.
 	 */
-	void setResourceManager(ResourceManager* resman = nullptr);
+	void setResourceManager(ResourceManager* resman = NULL);
 
 	/**
 	 * 使用中のResourceManagerインスタンスを解放します.
 	 * 再度ResourceManagerインスタンスを設定するまでは再生できなくなります.
 	 */
 	void releaseResourceManager();
-
-
-	/**
-	* 使用するSSPManagerインスタンスを設定します.
-	*
-	*/
-	void setSSPManager();
-
 
 	/**
 	 * 再生するssbpデータのdataKeyを設定します.
@@ -889,26 +943,26 @@ public:
 	void releaseAnime();
 
 	/**
-	 * アニメーションの再生を開始します.
-	 *
-	 * @param  ssaeName      パック名(ssae名）
-	 * @param  motionName    再生するモーション名
-	 * @param  loop          再生ループ数の指定. 省略時は0
-	 * @param  startFrameNo  再生を開始するフレームNoの指定. 省略時は0
-	 */
+	* アニメーションの再生を開始します.
+	*
+	* @param  ssaeName      パック名(ssae名）
+	* @param  motionName    再生するモーション名
+	* @param  loop          再生ループ数の指定. 省略時は0
+	* @param  startFrameNo  再生を開始するフレームNoの指定. 省略時は0
+	*/
 	void play(const std::string& ssaeName, const std::string& motionName, int loop = 0, int startFrameNo = 0);
 
 	/**
-	 * アニメーションの再生を開始します.
-	 * アニメーション名から再生するデータを選択します.
-	 * "ssae名/モーション名で指定してください.
-	 * sample.ssaeのanime_1を指定する場合、sample/anime_1となります.
-	 * ※ver1.1からモーション名のみで指定する事はできなくなりました。
-	 *
-	 * @param  animeName     再生するアニメーション名
-	 * @param  loop          再生ループ数の指定. 省略時は0
-	 * @param  startFrameNo  再生を開始するフレームNoの指定. 省略時は0
-	 */
+	* アニメーションの再生を開始します.
+	* アニメーション名から再生するデータを選択します.
+	* "ssae名/モーション名で指定してください.
+	* sample.ssaeのanime_1を指定する場合、sample/anime_1となります.
+	* ※ver1.1からモーション名のみで指定する事はできなくなりました。
+	*
+	* @param  animeName     再生するアニメーション名
+	* @param  loop          再生ループ数の指定. 省略時は0
+	* @param  startFrameNo  再生を開始するフレームNoの指定. 省略時は0
+	*/
 	void play(const std::string& animeName, int loop = 0, int startFrameNo = 0);
 
 	/**
@@ -921,7 +975,6 @@ public:
 	* ブレンドするアニメーションの条件は以下になります。
 	* ・同じssbp内に含まれている事
 	* ・同じパーツ構成（パーツ順、パーツ数）である事
-	* ・オフスクリーンレンダリングを行っていない
 	* SpriteStudioのフレームコントロールに並ぶパーツを上から順にブレンドしていきます。
 	* パーツ名等のチェックは行なっていませんので遷移元と遷移先アニメのパーツの順番を同じにする必要があります。
 	* 遷移元と遷移先のパーツ構成があっていない場合、正しくブレンドされませんのでご注意ください。
@@ -931,7 +984,7 @@ public:
 	* それ以外のアトリビュートは遷移先アニメの値が適用されます。
 	* インスタンスパーツが参照しているソースアニメはブレンドされません。
 	* エフェクトパーツから発生したパーティクルはブレンドされません。
-	*
+	* 
 	*
 	* @param  animeName     再生するアニメーション名
 	* @param  loop          再生ループ数の指定. 省略時は0
@@ -973,10 +1026,8 @@ public:
 	
 	/**
 	* アニメーションの開始フレームを取得します.
-	* アニメーションの総フレームを取得します.
 	*
 	* @return 開始フレーム
-	* @return 総フレーム
 	*/
 	int getStartFrame() const;
 
@@ -993,6 +1044,13 @@ public:
 	* @return 総フレーム
 	*/
 	int getTotalFrame() const;
+
+	/**
+	* FPSを取得します.
+	*
+	* @return アニメーションに設定されたFPS
+	*/
+	int getFPS() const;
 
 	/**
 	 * 再生フレームNoを取得します.
@@ -1070,6 +1128,10 @@ public:
 
 	/**
 	* indexからパーツ名を取得します.
+	*
+	* @param  result        パーツ情報を受け取るバッファ
+	* @param  name          取得するパーツ名
+	* @param  frameNo       取得するフレーム番号 -1の場合は現在再生しているフレームが適用される
 	*/
 	const char* getPartName(int partId) const;
 
@@ -1089,7 +1151,7 @@ public:
 
 	/**
 	* パーツ名からパーツの表示、非表示を設定します.
-	* コリジョン用のパーツや差し替えグラフィック等、SSP上で表示を行うがゲーム中では非表示にする場合に使用します。
+	* コリジョン用のパーツや差し替えグラフィック等、SS5上で表示を行うがゲーム中では非表示にする場合に使用します。
 	* SSの非表示アトリビュート設定するわけではないので注意してください。
 	*/
 	void setPartVisible(std::string partsname, bool flg);
@@ -1106,28 +1168,35 @@ public:
 	void setPartCell(std::string partsname, std::string sscename, std::string cellname);
 
 	/*
-	* プレイヤーの透明度を設定します(0～255).
-	* setOpacityではなくこちらを使用してください。
+	* プレイヤー本体の位置を設定します。
 	*/
-	void setAlpha(int alpha);
+	void  setPosition(float x, float y);
+
+	/*
+	* プレイヤー本体の回転角度を設定します。2Dの回転はZに値を設定してください。
+	*/
+
+	void  setRotation(float x, float y, float z);
+	/*
+	* プレイヤー本体のスケールを設定します。
+	*/
+	void  setScale(float x, float y);
+
+	/*
+	* プレイヤー本体の透明度を設定します。
+	*/
+	void  setAlpha(int a);
 
 	/*
 	* アニメの輝度を設定します.
 	* setColor(Color3B)ではなくこちらを使用してください。
 	* 制限としてカラーブレンドが適用されたパーツの色は変更できませんので注意してください。
-	* 
+	*
 	* @param  r          赤成分(0～255)
 	* @param  g          緑成分(0～255)
 	* @param  b          青成分(0～255)
 	*/
-	void setColor(int r, int g, int b );
-
-	/*
-	* setContentScaleFactorの数値に合わせて内部のUV補正を有効にするか設定します。
-	* マルチ解像度テクスチャ対応を行う際にプレイヤーの画像はそのまま使用する場合は、trueを設定してプレイヤー内UV値を変更してください.
-	* 画像を差し替える場合はaddDataの第二引数でパスを指定し、解像度の違うテクスチャを読み込んでください.
-	*/
-	void setContentScaleEneble(bool eneble);
+	void setColor(int r, int g, int b);
 
 	/*
 	* 名前を指定してパーツの再生するインスタンスアニメを変更します。
@@ -1201,83 +1270,21 @@ public:
 	void setEndFrameToLabelName(char *findLabelName);
 
 	/*
-	* オフスクリーンレンダリングを有効にします。
-	* 有効時は指定したサイズでクリッピングされます。
-	* 一度アニメーションを仮想レンダーにレンダリングしてから描画するため負荷がかかります。
-	* サイズ、基準位置を省略した場合、SSで設定した基準枠の範囲が適用されます。
-	* 基準位置は横方向の場合 width * pivotX の分がずれて描画されます。
-	*
-	* @param  flag				有効：true、無効：false
-	* @param  width				クリッピングするサイズ（横幅）
-	* @param  height			クリッピングするサイズ（高さ）
-	* @param  pivotX			基準位置X（-0.5：左～0：中央～+0.5：右）
-	* @param  pivotY			基準位置Y（-0.5：下～0：中央～+0.5：上）
+	* プレイヤー本体の反転を設定します。
 	*/
-	void offScreenRenderingEnable(bool enable, float width = 0.0f, float height = 0.0f, float pivotX = -1000.0f, float pivotY = -1000.0f);
+	void  setFlip(bool flipX, bool flipY);
 
 	/*
 	* パーツ番号に対応したスプライト情報を取得します。
-	*
+	* 
 	* @param  partIndex			パーツ番号
 	*/
 	CustomSprite* getSpriteData(int partIndex);
 
-	typedef std::function<void(Player*, const UserData*)> UserDataCallback;
-	typedef std::function<void(Player*)> PlayEndCallback;
-	typedef std::function<void(Player*)> ErrorCallback;
-
-	/** 
-	 * ユーザーデータを受け取るコールバックを設定します.
-	 * 再生したフレームにユーザーデータが設定されている場合呼び出されます。
-	 * プレイヤーを判定する場合、ゲーム側で管理しているss::Playerのアドレスと比較して判定してください。
-	 * 
-	 * コールバック内でパーツのステータスを取得したい場合は、この時点ではアニメが更新されていないため、
-	 * getPartStateに data->frameNo でフレーム数を指定して取得してください。
-	 * //再生しているモーションに含まれるパーツ名「collision」のステータスを取得します。
-	 * ss::ResluteState result;
-	 * ssplayer->getPartState(result, "collision", data->frameNo);
-	 * 
-	 * コールバック内でアニメーションの再生フレーム変更したい場合は
-	 * 次に行われるゲームのアップデート内でプレイヤーに対してアニメーションの操作をしてください。
-	 *
-	 * @param  callback  ユーザーデータ受け取りコールバック
-	 *
-     * @code
-	 * player->setUserDataCallback(CC_CALLBACK_2(MyScene::userDataCallback, this));
-	 * --
-	 * void MyScene::userDataCallback(ss::Player* player, const ss::UserData* data)
-	 * {
-	 *   ...
-	 * }
-     * @endcode
-	 */
-	void setUserDataCallback(const UserDataCallback& callback);
-
-	/**
-	 * 再生終了時に呼び出されるコールバックを設定します.
-	 * 再生したアニメーションが終了した段階で呼び出されます。
-	 * プレイヤーを判定する場合、ゲーム側で管理しているss::Playerのアドレスと比較して判定してください。
-	 * player->getPlayAnimeName();
-	 * を使用する事で再生しているアニメーション名を取得する事もできます。
-	 *
-	 * ループ回数分再生した後に呼び出される点に注意してください。
-	 * 無限ループで再生している場合はコールバックが発生しません。
-	 *
-	 * コールバック内でアニメーションの再生フレーム変更したい場合は
-	 * 次に行われるゲームのアップデート内でプレイヤーに対してアニメーションの操作をしてください。
-	 *
-	 * @param  callback  再生終了受け取りコールバック
-	 *
-     * @code
-	 * player->setPlayEndCallback(CC_CALLBACK_1(MyScene::playEndCallback, this));
-	 * --
-	 * void MyScene::playEndCallback(ss::Player* player)
-	 * {
-	 *   ...
-	 * }
-     * @endcode
-	 */
-	void setPlayEndCallback(const PlayEndCallback& callback);
+	/*
+	* 表示を行うパーツ数を取得します
+	*/
+	int getDrawSpriteCount(void);
 
 	/*
 	* rootパーツの状態を決めるマトリクスを設定します。
@@ -1286,22 +1293,70 @@ public:
 	* @param  use			マトリクスを適用するか？
 	*
 	*/
-	void setParentMatrix(cocos2d::Mat4, bool use);
+	void setParentMatrix(float* mat, bool use);
+
+	typedef std::function<void(Player*, const UserData*)> UserDataCallback;
+	typedef std::function<void(Player*)> PlayEndCallback;
+	/**
+	* ユーザーデータを受け取るコールバックを設定します.
+	* 再生したフレームにユーザーデータが設定されている場合呼び出されます。
+	* プレイヤーを判定する場合、ゲーム側で管理しているss::Playerのアドレスと比較して判定してください。
+	*
+	* コールバック内でパーツのステータスを取得したい場合は、この時点ではアニメが更新されていないため、
+	* getPartStateに data->frameNo でフレーム数を指定して取得してください。
+	* //再生しているモーションに含まれるパーツ名「collision」のステータスを取得します。
+	* ss::ResluteState result;
+	* ssplayer->getPartState(result, "collision", data->frameNo);
+	*
+	* コールバック内でアニメーションの再生フレーム変更したい場合は
+	* 次に行われるゲームのアップデート内でプレイヤーに対してアニメーションの操作をしてください。
+	*
+	* @param  callback  ユーザーデータ受け取りコールバック
+	*
+	* @code
+	* player->setUserDataCallback(CC_CALLBACK_2(MyScene::userDataCallback, this));
+	* --
+	* void MyScene::userDataCallback(ss::Player* player, const ss::UserData* data)
+	* {
+	*   ...
+	* }
+	* @endcode
+	*/
+	void setUserDataCallback(const UserDataCallback& callback);
+
+	/**
+	* 再生終了時に呼び出されるコールバックを設定します.
+	* 再生したアニメーションが終了した段階で呼び出されます。
+	* プレイヤーを判定する場合、ゲーム側で管理しているss::Playerのアドレスと比較して判定してください。
+	* player->getPlayAnimeName();
+	* を使用する事で再生しているアニメーション名を取得する事もできます。
+	*
+	* ループ回数分再生した後に呼び出される点に注意してください。
+	* 無限ループで再生している場合はコールバックが発生しません。
+	*
+	* コールバック内でアニメーションの再生フレーム変更したい場合は
+	* 次に行われるゲームのアップデート内でプレイヤーに対してアニメーションの操作をしてください。
+	*
+	* @param  callback  再生終了受け取りコールバック
+	*
+	* @code
+	* player->setPlayEndCallback(CC_CALLBACK_1(MyScene::playEndCallback, this));
+	* --
+	* void MyScene::playEndCallback(ss::Player* player)
+	* {
+	*   ...
+	* }
+	* @endcode
+	*/
+	void setPlayEndCallback(const PlayEndCallback& callback);
+
 
 public:
 	Player(void);
-	virtual ~Player();
-
-	// override
-	virtual bool init();
-	virtual void update(float dt);
-	virtual void setGlobalZOrder(float globalZOrder);
-
-	bool				_firstDraw;				//最初の描画フラグ
-	bool				_maskFuncFlag;			//マスク機能を有効にするか？（インスタンスのソースアニメはマスクが無効になる）
-	int					_mask_index;			//マスクの処理数
-	std::vector<CustomSprite *> _maskIndexList;	//マスク対象となるパーツ
-	cocos2d::Vector<cocos2d::Sprite*>	_parts;
+	~Player();
+	bool init();
+	void update(float dt);
+	void draw();
 
 protected:
 	void allocParts(int numParts, bool useCustomShaderProgram);
@@ -1312,8 +1367,6 @@ protected:
 	void updateFrame(float dt);
 	void setFrame(int frameNo, float dt = 0.0f);
 	void checkUserData(int frameNo);
-	void get_uv_rotation(float *u, float *v, float cu, float cv, float deg);
-	void set_InstanceRotation(float rotX, float rotY, float rotZ);
 	float parcentVal(float val1, float val2, float parcent);
 	float parcentValRot(float val1, float val2, float parcent);
 	void setMaskFuncFlag(bool flg);
@@ -1325,8 +1378,11 @@ protected:
 	std::string			_currentdataKey;
 	std::string			_currentAnimename;
 	AnimeRef*			_currentAnimeRef;
+	std::vector<CustomSprite *>	_parts;
 
-	SSPManager*			_sspman;
+	Player*				_motionBlendPlayer;
+	float				_blendTime;
+	float				_blendTimeMax;
 
 	bool				_frameSkipEnabled;
 	float				_playingFrame;
@@ -1336,46 +1392,39 @@ protected:
 	bool				_isPlaying;
 	bool				_isPausing;
 	bool				_isPlayFirstUserdataChack;
-	bool				_isPlayFirstUpdate;
-	bool				_isContentScaleFactorAuto;
 	int					_prevDrawFrameNo;
 	bool				_partVisible[PART_VISIBLE_MAX];
 	int					_cellChange[PART_VISIBLE_MAX];
 	int					_partIndex[PART_VISIBLE_MAX];
-	int					_InstanceAlpha;
-	float				_InstanceRotX;
-	float				_InstanceRotY;
-	float				_InstanceRotZ;
 	int					_animefps;
 	int					_col_r;
 	int					_col_g;
 	int					_col_b;
-	bool				_instanceOverWrite;		//インスタンス情報を上書きするか？
-	Instance			_instanseParam;			//インスタンスパラメータ
-	cocos2d::RenderTexture*	_offScreentexture;
-	float				_offScreenWidth;
-	float				_offScreenHeight;
-	float				_offScreenPivotX;
-	float				_offScreenPivotY;
-	Player*				_motionBlendPlayer;
-	float				_blendTime;
-	float				_blendTimeMax;
-	int					_startFrameOverWrite;	//開始フレームの上書き設定
-	int					_endFrameOverWrite;		//終了フレームの上書き設定
-	int					_seedOffset;			//エフェクトシードオフセット
+	bool				_instanceOverWrite;				//インスタンス情報を上書きするか？
+	Instance			_instanseParam;					//インスタンスパラメータ
+	int					_startFrameOverWrite;			//開始フレームの上書き設定
+	int					_endFrameOverWrite;				//終了フレームの上書き設定
+	int					_seedOffset;					//エフェクトシードオフセット
+	int					_draw_count;					//表示スプライト数
 
-	cocos2d::Mat4		_parentMat;				//プレイヤーが持つ継承されたマトリクス
-	bool				_parentMatUse;			//プレイヤーが持つ継承されたマトリクスがあるか？
-	bool				_maskParentSetting;		//親パーツのマスク対象（インスタンスのみ使用する）
+	UserData			_userData;
+
+	State				_state;
+
+	float				_parentMat[16];					//プレイヤーが持つ継承されたマトリクス
+	bool				_parentMatUse;					//プレイヤーが持つ継承されたマトリクスがあるか？
+	bool				_maskFuncFlag;					//マスク機能を有効にするか？（インスタンスのソースアニメはマスクが無効になる）
+	bool				_maskParentSetting;				//親パーツのマスク対象（インスタンスのみ使用する）
+
+	std::vector<CustomSprite *> _maskIndexList;			//マスク対象となるパーツ
+
+	int _direction;										//プレイヤーの座標系設定
+	int _window_w;
+	int _window_h;
 
 	UserDataCallback	_userDataCallback;
-	UserData			_userData;
 	PlayEndCallback		_playEndCallback;
-	ErrorCallback		_ErrorCallback;
 };
-
-
-
 
 
 };	// namespace ss
