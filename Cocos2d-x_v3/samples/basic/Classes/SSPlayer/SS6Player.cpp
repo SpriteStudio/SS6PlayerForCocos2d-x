@@ -14,13 +14,16 @@ namespace ss
 * SSPlayerControl
 Cocos2d-xからSSPlayerを使用するためのラッパークラス
 */
+cocos2d::GLProgram* SSPlayerControl::_defaultShaderProgram = nullptr;
+cocos2d::GLProgram* SSPlayerControl::_partColorMASKShaderProgram = nullptr;
+cocos2d::GLProgram* SSPlayerControl::_partColorMIXShaderProgram = nullptr;
+cocos2d::GLProgram* SSPlayerControl::_partColorMULShaderProgram = nullptr;
+cocos2d::GLProgram* SSPlayerControl::_partColorADDShaderProgram = nullptr;
+cocos2d::GLProgram* SSPlayerControl::_partColorSUBShaderProgram = nullptr;
+
 SSPlayerControl::SSPlayerControl()
 {
 	_ssp = nullptr;
-	_partColorMIXShaderProgram = nullptr;
-	_partColorMULShaderProgram = nullptr;
-	_partColorADDShaderProgram = nullptr;
-	_partColorSUBShaderProgram = nullptr;
 }
 SSPlayerControl::~SSPlayerControl()
 {
@@ -36,13 +39,8 @@ SSPlayerControl* SSPlayerControl::create(ResourceManager* resman)
 	if (obj && obj->init())
 	{
 		obj->getSSPInstance()->setResourceManager(resman);
-		obj->_defaultShaderProgram = obj->getGLProgram();
-/*
-		obj->_partColorMIXShaderProgram = obj->getCustomShaderProgram(BLEND_MIX);
-		obj->_partColorMULShaderProgram = obj->getCustomShaderProgram(BLEND_MUL);
-		obj->_partColorADDShaderProgram = obj->getCustomShaderProgram(BLEND_ADD);
-		obj->_partColorSUBShaderProgram = obj->getCustomShaderProgram(BLEND_SUB);
-*/
+		obj->initCustomShaderProgram();
+
 		obj->autorelease();
 		obj->scheduleUpdate();
 		return obj;
@@ -88,185 +86,217 @@ void SSPlayerControl::draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &tra
 }
 //sprite のオーバーライドここまで
 //sprite のシェーダー
-/*
-static const GLchar * ssMIXPositionTextureColor_frag =
-"                                                                     \n\
-#ifdef GL_ES                                                          \n\
-precision lowp float;                                                 \n\
-#endif                                                                \n\
-                                                                      \n\
-varying vec4 v_fragmentColor;                                         \n\
-varying vec2 v_texCoord;                                              \n\
-uniform sampler2D u_texture;                                          \n\
-                                                                      \n\
-void main()                                                           \n\
-{                                                                     \n\
-	vec4 pixel = texture2D(u_texture, v_texCoord);                    \n\
-    if(pixel.a == 0.0)                                                \n\
-    {                                                                 \n\
-        discard;                                                      \n\
-    }                                                                 \n\
-	gl_FragColor = pixel * v_fragmentColor;                           \n\
-}                                                                     \n\
-";
-const char* ssMULPositionTextureColor_frag =
-"                                                                     \n\
-#ifdef GL_ES                                                          \n\
-precision lowp float;                                                 \n\
-#endif                                                                \n\
-                                                                      \n\
-varying vec4 v_fragmentColor;                                         \n\
-varying vec2 v_texCoord;                                              \n\
-uniform sampler2D u_texture;                                          \n\
-                                                                      \n\
-void main()                                                           \n\
-{                                                                     \n\
-	vec4 pixel = texture2D(u_texture, v_texCoord);                    \n\
-    if(pixel.a == 0.0)                                                \n\
-    {                                                                 \n\
-        discard;                                                      \n\
-    }                                                                 \n\
-	gl_FragColor = pixel * v_fragmentColor;                           \n\
-}                                                                     \n\
-";
-static const GLchar * ssADDPositionTextureColor_frag =
-"                                                                     \n\
-#ifdef GL_ES                                                          \n\
-precision lowp float;                                                 \n\
-#endif                                                                \n\
-                                                                      \n\
-varying vec4 v_fragmentColor;                                         \n\
-varying vec2 v_texCoord;                                              \n\
-uniform sampler2D u_texture;                                          \n\
-                                                                      \n\
-void main()                                                           \n\
-{                                                                     \n\
-	vec4 pixel = texture2D(u_texture, v_texCoord);                    \n\
-    if(pixel.a == 0.0)                                                \n\
-    {                                                                 \n\
-        discard;                                                      \n\
-    }                                                                 \n\
-	gl_FragColor = pixel + v_fragmentColor;                           \n\
-}                                                                     \n\
-";
-static const GLchar * ssSUBXPositionTextureColor_frag =
-"                                                                     \n\
-#ifdef GL_ES                                                          \n\
-precision lowp float;                                                 \n\
-#endif                                                                \n\
-                                                                      \n\
-varying vec4 v_fragmentColor;                                         \n\
-varying vec2 v_texCoord;                                              \n\
-uniform sampler2D u_texture;                                          \n\
-                                                                      \n\
-void main()                                                           \n\
-{                                                                     \n\
-	vec4 pixel = texture2D(u_texture, v_texCoord);                    \n\
-    if(pixel.a == 0.0)                                                \n\
-    {                                                                 \n\
-        discard;                                                      \n\
-    }                                                                 \n\
-	gl_FragColor = pixel - v_fragmentColor;                           \n\
-}                                                                     \n\
-";
+static const GLchar * ssPositionTextureColor_vartex = R"(
+attribute vec4 a_position;
+attribute vec2 a_texCoord;
+attribute vec4 a_color;
 
+#ifdef GL_ES
+varying lowp vec4 v_fragmentColor;
+varying mediump vec2 v_texCoord;
+#else
+varying vec4 v_fragmentColor;
+varying vec2 v_texCoord;
+#endif
 
-cocos2d::GLProgram* SSPlayerControl::getCustomShaderProgram( int type )
+void main()
+{
+    gl_Position = CC_MVPMatrix * a_position;
+    v_fragmentColor = a_color;
+    v_texCoord = a_texCoord;
+}
+)"; 
+const char* ssMASKPositionTextureColor_frag = R"(
+#ifdef GL_ES
+precision lowp float;
+#endif
+
+varying vec4 v_fragmentColor;
+varying vec2 v_texCoord;
+
+void main()
+{
+	vec4 pixel = texture2D(CC_Texture0, v_texCoord);
+    if(pixel.a == 0.0)
+    {
+        discard;
+    }
+    gl_FragColor = v_fragmentColor * pixel;
+}
+)";
+static const GLchar * ssMIXPositionTextureColor_frag = R"(
+#ifdef GL_ES
+precision lowp float;
+#endif
+
+varying vec4 v_fragmentColor;
+varying vec2 v_texCoord;
+
+void main()
+{
+	vec4 pixel = texture2D(CC_Texture0, v_texCoord);
+    gl_FragColor = v_fragmentColor * pixel;
+}
+)";
+const char* ssMULPositionTextureColor_frag = R"(
+#ifdef GL_ES
+precision lowp float;
+#endif
+
+varying vec4 v_fragmentColor;
+varying vec2 v_texCoord;
+
+void main()
+{
+	vec4 pixel = texture2D(CC_Texture0, v_texCoord);
+    gl_FragColor = v_fragmentColor * pixel;
+}
+)";
+static const GLchar * ssADDPositionTextureColor_frag = R"(
+#ifdef GL_ES
+precision lowp float;
+#endif
+
+varying vec4 v_fragmentColor;
+varying vec2 v_texCoord;
+
+void main()
+{
+	vec4 pixel = texture2D(CC_Texture0, v_texCoord);
+    gl_FragColor = v_fragmentColor * pixel;
+}
+)";
+static const GLchar * ssSUBPositionTextureColor_frag = R"(
+#ifdef GL_ES
+precision lowp float;
+#endif
+
+varying vec4 v_fragmentColor;
+varying vec2 v_texCoord;
+
+void main()
+{
+	vec4 pixel = texture2D(CC_Texture0, v_texCoord);
+    gl_FragColor = v_fragmentColor * pixel;
+}
+)";
+
+void SSPlayerControl::initCustomShaderProgram( )
 {
 	using namespace cocos2d;
 
-	GLProgram* p = nullptr;
-	static GLProgram* pMIX = nullptr;
-	static GLProgram* pMUL = nullptr;
-	static GLProgram* pADD = nullptr;
-	static GLProgram* pSUB = nullptr;
-	static bool constructFailed = false;
-	switch (type)
+	if (_defaultShaderProgram == nullptr )
 	{
-	case BLEND_MIX:
-		if (!pMIX && !constructFailed)
-		{
-			pMIX = new GLProgram();
-			pMIX->initWithByteArrays(
-				ccPositionTextureColor_vert,
-				ssMIXPositionTextureColor_frag);
-			pMIX->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_POSITION, GLProgram::VERTEX_ATTRIB_POSITION);
-			pMIX->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_COLOR, GLProgram::VERTEX_ATTRIB_COLOR);
-			pMIX->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_TEX_COORD, GLProgram::VERTEX_ATTRIB_TEX_COORDS);
-			if (!pMIX->link())
-			{
-				constructFailed = true;
-				return nullptr;
-			}
-
-			pMIX->updateUniforms();
-			p = pMIX;
-		}
-		break;
-	case BLEND_MUL:
-		if (!pMUL && !constructFailed)
-		{
-			pMUL = new GLProgram();
-			pMUL->initWithByteArrays(
-				ccPositionTextureColor_vert,
-				ssMULPositionTextureColor_frag);
-			pMUL->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_POSITION, GLProgram::VERTEX_ATTRIB_POSITION);
-			pMUL->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_COLOR, GLProgram::VERTEX_ATTRIB_COLOR);
-			pMUL->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_TEX_COORD, GLProgram::VERTEX_ATTRIB_TEX_COORDS);
-			if (!pMUL->link())
-			{
-				constructFailed = true;
-				return nullptr;
-			}
-
-			pMUL->updateUniforms();
-			p = pMUL;
-		}
-		break;
-	case BLEND_ADD:
-		if (!pADD && !constructFailed)
-		{
-			pADD = new GLProgram();
-			pADD->initWithByteArrays(
-				ccPositionTextureColor_vert,
-				ssADDPositionTextureColor_frag);
-			pADD->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_POSITION, GLProgram::VERTEX_ATTRIB_POSITION);
-			pADD->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_COLOR, GLProgram::VERTEX_ATTRIB_COLOR);
-			pADD->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_TEX_COORD, GLProgram::VERTEX_ATTRIB_TEX_COORDS);
-			if (!pADD->link())
-			{
-				constructFailed = true;
-				return nullptr;
-			}
-
-			pADD->updateUniforms();
-			p = pADD;
-		}
-		break;
-	case BLEND_SUB:
-		if (!pSUB && !constructFailed)
-		{
-			pSUB = new GLProgram();
-			pSUB->initWithByteArrays(
-				ccPositionTextureColor_vert,
-				ssSUBXPositionTextureColor_frag);
-			pSUB->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_POSITION, GLProgram::VERTEX_ATTRIB_POSITION);
-			pSUB->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_COLOR, GLProgram::VERTEX_ATTRIB_COLOR);
-			pSUB->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_TEX_COORD, GLProgram::VERTEX_ATTRIB_TEX_COORDS);
-			if (!pSUB->link())
-			{
-				constructFailed = true;
-				return nullptr;
-			}
-
-			pSUB->updateUniforms();
-			p = pSUB;
-		}
-		break;
+		_defaultShaderProgram = this->getGLProgram();
 	}
-	return p;
+	if (_partColorMASKShaderProgram == nullptr)
+	{
+		GLProgram* p = nullptr;
+		p = new GLProgram();
+		p->autorelease();
+
+		p->initWithByteArrays(ssPositionTextureColor_vartex, ssMASKPositionTextureColor_frag);
+		//	this->setShaderProgram(p);
+
+		// 頂点情報のバインド  
+		glBindAttribLocation(p->getProgram(), cocos2d::GLProgram::VERTEX_ATTRIB_POSITION, GLProgram::ATTRIBUTE_NAME_POSITION);
+		glBindAttribLocation(p->getProgram(), cocos2d::GLProgram::VERTEX_ATTRIB_TEX_COORD, GLProgram::ATTRIBUTE_NAME_TEX_COORD);
+		glBindAttribLocation(p->getProgram(), cocos2d::GLProgram::VERTEX_ATTRIB_COLOR, GLProgram::ATTRIBUTE_NAME_COLOR);
+
+		p->link();
+		p->updateUniforms();
+		// 頂点に付加する情報のロケーションを取得  
+		_MASK_uniform_map[WVP] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_MVP_MATRIX);
+		_MASK_uniform_map[SAMPLER] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_SAMPLER0);
+
+		_partColorMASKShaderProgram = p;
+	}
+	if (_partColorMIXShaderProgram == nullptr)
+	{
+		GLProgram* p = nullptr;
+		p = new GLProgram();
+
+		p->initWithByteArrays(ssPositionTextureColor_vartex, ssMIXPositionTextureColor_frag);
+		//	this->setShaderProgram(p);
+
+		// 頂点情報のバインド  
+		glBindAttribLocation(p->getProgram(), cocos2d::GLProgram::VERTEX_ATTRIB_POSITION, GLProgram::ATTRIBUTE_NAME_POSITION);
+		glBindAttribLocation(p->getProgram(), cocos2d::GLProgram::VERTEX_ATTRIB_TEX_COORD, GLProgram::ATTRIBUTE_NAME_TEX_COORD);
+		glBindAttribLocation(p->getProgram(), cocos2d::GLProgram::VERTEX_ATTRIB_COLOR, GLProgram::ATTRIBUTE_NAME_COLOR);
+
+		p->link();
+		p->updateUniforms();
+		// 頂点に付加する情報のロケーションを取得  
+		_MIX_uniform_map[WVP] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_MVP_MATRIX);
+		_MIX_uniform_map[SAMPLER] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_SAMPLER0);
+
+		_partColorMIXShaderProgram = p;
+	}
+	if (_partColorMULShaderProgram == nullptr)
+	{
+		GLProgram* p = nullptr;
+		p = new GLProgram();
+
+		p->initWithByteArrays(ssPositionTextureColor_vartex, ssMULPositionTextureColor_frag);
+		//	this->setShaderProgram(p);
+
+		// 頂点情報のバインド  
+		glBindAttribLocation(p->getProgram(), cocos2d::GLProgram::VERTEX_ATTRIB_POSITION, GLProgram::ATTRIBUTE_NAME_POSITION);
+		glBindAttribLocation(p->getProgram(), cocos2d::GLProgram::VERTEX_ATTRIB_TEX_COORD, GLProgram::ATTRIBUTE_NAME_TEX_COORD);
+		glBindAttribLocation(p->getProgram(), cocos2d::GLProgram::VERTEX_ATTRIB_COLOR, GLProgram::ATTRIBUTE_NAME_COLOR);
+
+		p->link();
+		p->updateUniforms();
+		// 頂点に付加する情報のロケーションを取得  
+		_MUL_uniform_map[WVP] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_MVP_MATRIX);
+		_MUL_uniform_map[SAMPLER] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_SAMPLER0);
+
+		_partColorMULShaderProgram = p;
+	}
+	if (_partColorADDShaderProgram == nullptr)
+	{
+		GLProgram* p = nullptr;
+		p = new GLProgram();
+
+		p->initWithByteArrays(ssPositionTextureColor_vartex, ssADDPositionTextureColor_frag);
+		//	this->setShaderProgram(p);
+
+		// 頂点情報のバインド  
+		glBindAttribLocation(p->getProgram(), cocos2d::GLProgram::VERTEX_ATTRIB_POSITION, GLProgram::ATTRIBUTE_NAME_POSITION);
+		glBindAttribLocation(p->getProgram(), cocos2d::GLProgram::VERTEX_ATTRIB_TEX_COORD, GLProgram::ATTRIBUTE_NAME_TEX_COORD);
+		glBindAttribLocation(p->getProgram(), cocos2d::GLProgram::VERTEX_ATTRIB_COLOR, GLProgram::ATTRIBUTE_NAME_COLOR);
+
+		p->link();
+		p->updateUniforms();
+		// 頂点に付加する情報のロケーションを取得  
+		_ADD_uniform_map[WVP] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_MVP_MATRIX);
+		_ADD_uniform_map[SAMPLER] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_SAMPLER0);
+
+		_partColorADDShaderProgram = p;
+	}
+	if (_partColorSUBShaderProgram == nullptr)
+	{
+		GLProgram* p = nullptr;
+		p = new GLProgram();
+
+		p->initWithByteArrays(ssPositionTextureColor_vartex, ssSUBPositionTextureColor_frag);
+		//	this->setShaderProgram(p);
+
+		// 頂点情報のバインド  
+		glBindAttribLocation(p->getProgram(), cocos2d::GLProgram::VERTEX_ATTRIB_POSITION, GLProgram::ATTRIBUTE_NAME_POSITION);
+		glBindAttribLocation(p->getProgram(), cocos2d::GLProgram::VERTEX_ATTRIB_TEX_COORD, GLProgram::ATTRIBUTE_NAME_TEX_COORD);
+		glBindAttribLocation(p->getProgram(), cocos2d::GLProgram::VERTEX_ATTRIB_COLOR, GLProgram::ATTRIBUTE_NAME_COLOR);
+
+		p->link();
+		p->updateUniforms();
+		// 頂点に付加する情報のロケーションを取得  
+		_SUB_uniform_map[WVP] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_MVP_MATRIX);
+		_SUB_uniform_map[SAMPLER] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_SAMPLER0);
+
+		_partColorSUBShaderProgram = p;
+	}
 }
-*/
+
 
 
 

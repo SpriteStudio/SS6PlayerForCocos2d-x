@@ -129,6 +129,20 @@ extern void get_uv_rotation(float *u, float *v, float cu, float cv, float deg);
 	#define SSLOGERROR(format,...)  do {} while (0)
 #endif
 
+// attributeのindex  
+enum {
+	ATTRIBUTE_POS,
+	ATTRIBUTE_COL,
+	ATTRIBUTE_UV,
+};
+
+// uniformのindex  
+enum {
+	WVP,
+	SAMPLER,
+	GREATER,
+};
+
 /**
 * SSPlayerControl 
   Cocos2d-xからSSPlayerを使用するためのラッパークラス
@@ -164,14 +178,20 @@ public:
 	virtual void draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transform, uint32_t flags);
 
 	void onDraw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transform, uint32_t flags);
-	cocos2d::GLProgram* getCustomShaderProgram(int type);
+	void initCustomShaderProgram( );
 
-	cocos2d::GLProgram*	_defaultShaderProgram;
-	cocos2d::GLProgram*	_partColorMIXShaderProgram;
-	cocos2d::GLProgram*	_partColorMULShaderProgram;
-	cocos2d::GLProgram*	_partColorADDShaderProgram;
-	cocos2d::GLProgram*	_partColorSUBShaderProgram;
+	static cocos2d::GLProgram*	_defaultShaderProgram;
+	static cocos2d::GLProgram*	_partColorMASKShaderProgram;
+	static cocos2d::GLProgram*	_partColorMIXShaderProgram;
+	static cocos2d::GLProgram*	_partColorMULShaderProgram;
+	static cocos2d::GLProgram*	_partColorADDShaderProgram;
+	static cocos2d::GLProgram*	_partColorSUBShaderProgram;
 
+	std::map<int, int> _MASK_uniform_map;
+	std::map<int, int> _MIX_uniform_map;
+	std::map<int, int> _MUL_uniform_map;
+	std::map<int, int> _ADD_uniform_map;
+	std::map<int, int> _SUB_uniform_map;
 private:
 	Player *_ssp;
 	cocos2d::CustomCommand _customCommand;
@@ -841,6 +861,7 @@ enum BlendType
 	BLEND_SCREEN, 	///< 5 スクリーン
 	BLEND_EXCLUSION,///< 6 除外
 	BLEND_INVERT, 	///< 7 反転
+	BLEND_MASK, 	///< マスク　プレイヤーではマスクを描画モード扱いにしておく
 	BLEND_NUM,
 };
 
