@@ -17,6 +17,7 @@ namespace ss
 	extern void SSPlatformRelese(void);
 	extern void SSSetPlusDirection(int direction, int window_w, int window_h);
 	extern void SSGetPlusDirection(int &direction, int &window_w, int &window_h);
+    extern void SSSetPlusDirection(bool flag);
 	extern unsigned char* SSFileOpen(const char* pszFileName, const char* pszMode, unsigned long * pSize);
 	extern long SSTextureLoad(const char* pszFileName, int  wrapmode, int filtermode);
 	extern bool SSTextureRelese(long handle);

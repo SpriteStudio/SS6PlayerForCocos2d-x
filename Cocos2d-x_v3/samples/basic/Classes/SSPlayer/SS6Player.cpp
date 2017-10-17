@@ -17,6 +17,10 @@ Cocos2d-xからSSPlayerを使用するためのラッパークラス
 SSPlayerControl::SSPlayerControl()
 {
 	_ssp = nullptr;
+	_partColorMIXShaderProgram = nullptr;
+	_partColorMULShaderProgram = nullptr;
+	_partColorADDShaderProgram = nullptr;
+	_partColorSUBShaderProgram = nullptr;
 }
 SSPlayerControl::~SSPlayerControl()
 {
@@ -32,6 +36,13 @@ SSPlayerControl* SSPlayerControl::create(ResourceManager* resman)
 	if (obj && obj->init())
 	{
 		obj->getSSPInstance()->setResourceManager(resman);
+		obj->_defaultShaderProgram = obj->getGLProgram();
+/*
+		obj->_partColorMIXShaderProgram = obj->getCustomShaderProgram(BLEND_MIX);
+		obj->_partColorMULShaderProgram = obj->getCustomShaderProgram(BLEND_MUL);
+		obj->_partColorADDShaderProgram = obj->getCustomShaderProgram(BLEND_ADD);
+		obj->_partColorSUBShaderProgram = obj->getCustomShaderProgram(BLEND_SUB);
+*/
 		obj->autorelease();
 		obj->scheduleUpdate();
 		return obj;
@@ -44,6 +55,7 @@ Player* SSPlayerControl::getSSPInstance()
 	if (_ssp == nullptr)
 	{
 		_ssp = Player::create();
+		_ssp->_playercontrol = this;
 	}
 	return _ssp;
 }
@@ -75,7 +87,186 @@ void SSPlayerControl::draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &tra
 	renderer->addCommand(&_customCommand);
 }
 //sprite のオーバーライドここまで
+//sprite のシェーダー
+/*
+static const GLchar * ssMIXPositionTextureColor_frag =
+"                                                                     \n\
+#ifdef GL_ES                                                          \n\
+precision lowp float;                                                 \n\
+#endif                                                                \n\
+                                                                      \n\
+varying vec4 v_fragmentColor;                                         \n\
+varying vec2 v_texCoord;                                              \n\
+uniform sampler2D u_texture;                                          \n\
+                                                                      \n\
+void main()                                                           \n\
+{                                                                     \n\
+	vec4 pixel = texture2D(u_texture, v_texCoord);                    \n\
+    if(pixel.a == 0.0)                                                \n\
+    {                                                                 \n\
+        discard;                                                      \n\
+    }                                                                 \n\
+	gl_FragColor = pixel * v_fragmentColor;                           \n\
+}                                                                     \n\
+";
+const char* ssMULPositionTextureColor_frag =
+"                                                                     \n\
+#ifdef GL_ES                                                          \n\
+precision lowp float;                                                 \n\
+#endif                                                                \n\
+                                                                      \n\
+varying vec4 v_fragmentColor;                                         \n\
+varying vec2 v_texCoord;                                              \n\
+uniform sampler2D u_texture;                                          \n\
+                                                                      \n\
+void main()                                                           \n\
+{                                                                     \n\
+	vec4 pixel = texture2D(u_texture, v_texCoord);                    \n\
+    if(pixel.a == 0.0)                                                \n\
+    {                                                                 \n\
+        discard;                                                      \n\
+    }                                                                 \n\
+	gl_FragColor = pixel * v_fragmentColor;                           \n\
+}                                                                     \n\
+";
+static const GLchar * ssADDPositionTextureColor_frag =
+"                                                                     \n\
+#ifdef GL_ES                                                          \n\
+precision lowp float;                                                 \n\
+#endif                                                                \n\
+                                                                      \n\
+varying vec4 v_fragmentColor;                                         \n\
+varying vec2 v_texCoord;                                              \n\
+uniform sampler2D u_texture;                                          \n\
+                                                                      \n\
+void main()                                                           \n\
+{                                                                     \n\
+	vec4 pixel = texture2D(u_texture, v_texCoord);                    \n\
+    if(pixel.a == 0.0)                                                \n\
+    {                                                                 \n\
+        discard;                                                      \n\
+    }                                                                 \n\
+	gl_FragColor = pixel + v_fragmentColor;                           \n\
+}                                                                     \n\
+";
+static const GLchar * ssSUBXPositionTextureColor_frag =
+"                                                                     \n\
+#ifdef GL_ES                                                          \n\
+precision lowp float;                                                 \n\
+#endif                                                                \n\
+                                                                      \n\
+varying vec4 v_fragmentColor;                                         \n\
+varying vec2 v_texCoord;                                              \n\
+uniform sampler2D u_texture;                                          \n\
+                                                                      \n\
+void main()                                                           \n\
+{                                                                     \n\
+	vec4 pixel = texture2D(u_texture, v_texCoord);                    \n\
+    if(pixel.a == 0.0)                                                \n\
+    {                                                                 \n\
+        discard;                                                      \n\
+    }                                                                 \n\
+	gl_FragColor = pixel - v_fragmentColor;                           \n\
+}                                                                     \n\
+";
 
+
+cocos2d::GLProgram* SSPlayerControl::getCustomShaderProgram( int type )
+{
+	using namespace cocos2d;
+
+	GLProgram* p = nullptr;
+	static GLProgram* pMIX = nullptr;
+	static GLProgram* pMUL = nullptr;
+	static GLProgram* pADD = nullptr;
+	static GLProgram* pSUB = nullptr;
+	static bool constructFailed = false;
+	switch (type)
+	{
+	case BLEND_MIX:
+		if (!pMIX && !constructFailed)
+		{
+			pMIX = new GLProgram();
+			pMIX->initWithByteArrays(
+				ccPositionTextureColor_vert,
+				ssMIXPositionTextureColor_frag);
+			pMIX->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_POSITION, GLProgram::VERTEX_ATTRIB_POSITION);
+			pMIX->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_COLOR, GLProgram::VERTEX_ATTRIB_COLOR);
+			pMIX->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_TEX_COORD, GLProgram::VERTEX_ATTRIB_TEX_COORDS);
+			if (!pMIX->link())
+			{
+				constructFailed = true;
+				return nullptr;
+			}
+
+			pMIX->updateUniforms();
+			p = pMIX;
+		}
+		break;
+	case BLEND_MUL:
+		if (!pMUL && !constructFailed)
+		{
+			pMUL = new GLProgram();
+			pMUL->initWithByteArrays(
+				ccPositionTextureColor_vert,
+				ssMULPositionTextureColor_frag);
+			pMUL->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_POSITION, GLProgram::VERTEX_ATTRIB_POSITION);
+			pMUL->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_COLOR, GLProgram::VERTEX_ATTRIB_COLOR);
+			pMUL->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_TEX_COORD, GLProgram::VERTEX_ATTRIB_TEX_COORDS);
+			if (!pMUL->link())
+			{
+				constructFailed = true;
+				return nullptr;
+			}
+
+			pMUL->updateUniforms();
+			p = pMUL;
+		}
+		break;
+	case BLEND_ADD:
+		if (!pADD && !constructFailed)
+		{
+			pADD = new GLProgram();
+			pADD->initWithByteArrays(
+				ccPositionTextureColor_vert,
+				ssADDPositionTextureColor_frag);
+			pADD->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_POSITION, GLProgram::VERTEX_ATTRIB_POSITION);
+			pADD->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_COLOR, GLProgram::VERTEX_ATTRIB_COLOR);
+			pADD->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_TEX_COORD, GLProgram::VERTEX_ATTRIB_TEX_COORDS);
+			if (!pADD->link())
+			{
+				constructFailed = true;
+				return nullptr;
+			}
+
+			pADD->updateUniforms();
+			p = pADD;
+		}
+		break;
+	case BLEND_SUB:
+		if (!pSUB && !constructFailed)
+		{
+			pSUB = new GLProgram();
+			pSUB->initWithByteArrays(
+				ccPositionTextureColor_vert,
+				ssSUBXPositionTextureColor_frag);
+			pSUB->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_POSITION, GLProgram::VERTEX_ATTRIB_POSITION);
+			pSUB->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_COLOR, GLProgram::VERTEX_ATTRIB_COLOR);
+			pSUB->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_TEX_COORD, GLProgram::VERTEX_ATTRIB_TEX_COORDS);
+			if (!pSUB->link())
+			{
+				constructFailed = true;
+				return nullptr;
+			}
+
+			pSUB->updateUniforms();
+			p = pSUB;
+		}
+		break;
+	}
+	return p;
+}
+*/
 
 
 
@@ -124,9 +315,13 @@ static std::string Format(const char* format, ...){
 	while (1)
 	{
 		va_copy( args , source );
+#if _WIN32
 		//Windows
 		if (_vsnprintf(&tmp[0], tmp.size(), format, args) == -1)
-		{
+#else
+        if (vsnprintf(&tmp[0], tmp.size(), format, args) == -1)
+#endif
+        {
 			tmp.resize(tmp.size() * 2);
 		}
 		else
@@ -1391,6 +1586,7 @@ Player::Player(void)
 	,_parentMatUse(false)					//プレイヤーが持つ継承されたマトリクスがあるか？
 	,_userDataCallback(nullptr)
 	,_playEndCallback(nullptr)
+	, _playercontrol(nullptr)
 {
 	int i;
 	for (i = 0; i < PART_VISIBLE_MAX; i++)
@@ -1870,6 +2066,7 @@ void Player::allocParts(int numParts, bool useCustomShaderProgram)
 		{
 			CustomSprite* sprite =  CustomSprite::create();
 			sprite->_ssplayer = NULL;
+			sprite->_playercontrol = _playercontrol;
 
 			_parts.push_back(sprite);
 		}
@@ -3539,6 +3736,7 @@ CustomSprite::CustomSprite():
 	,effectAttrInitialized(false)
 	,effectTimeTotal(0)
 	, _maskInfluence(true)
+	, _playercontrol(nullptr)
 {
 }
 

@@ -73,7 +73,7 @@ https://github.com/SpriteStudio/SpriteStudio6-SDK
 #include "SS6PlayerPlatform.h"
 
 //エフェクト関連
-#include "./Common/loader/ssloader.h"
+#include "./Common/Loader/ssloader.h"
 #include "./Common/Animator/ssplayer_macro.h"
 #include "./Common/Animator/ssplayer_matrix.h"
 #include "./Common/Animator/ssplayer_effectfunction.h"
@@ -164,10 +164,18 @@ public:
 	virtual void draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transform, uint32_t flags);
 
 	void onDraw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transform, uint32_t flags);
+	cocos2d::GLProgram* getCustomShaderProgram(int type);
+
+	cocos2d::GLProgram*	_defaultShaderProgram;
+	cocos2d::GLProgram*	_partColorMIXShaderProgram;
+	cocos2d::GLProgram*	_partColorMULShaderProgram;
+	cocos2d::GLProgram*	_partColorADDShaderProgram;
+	cocos2d::GLProgram*	_partColorSUBShaderProgram;
 
 private:
 	Player *_ssp;
 	cocos2d::CustomCommand _customCommand;
+
 };
 
 /**
@@ -335,6 +343,8 @@ public:
 	//エフェクト制御用ワーク
 	bool effectAttrInitialized;
 	float effectTimeTotal;
+
+	SSPlayerControl*	_playercontrol;
 
 public:
 	CustomSprite();
@@ -1357,6 +1367,8 @@ public:
 	bool init();
 	void update(float dt);
 	void draw();
+
+	SSPlayerControl*	_playercontrol;
 
 protected:
 	void allocParts(int numParts, bool useCustomShaderProgram);

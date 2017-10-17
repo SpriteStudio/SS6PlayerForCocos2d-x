@@ -20,7 +20,9 @@ namespace ss
 	int _direction;
 	int _window_w;
 	int _window_h;
+    bool _isContentScaleFactorAuto;
 
+	#define OPENGLES20	(1)	//Opengl 2.0で動作するコードにする場合は1
 
 	//アプリケーション初期化時の処理
 	void SSPlatformInit(void)
@@ -31,6 +33,7 @@ namespace ss
 		_direction = PLUS_UP;
 		_window_w = 1280;
 		_window_h = 720;
+        _isContentScaleFactorAuto = true;
 	}
 	//アプリケーション終了時の処理
 	void SSPlatformRelese(void)
@@ -63,37 +66,29 @@ namespace ss
 		window_h = _window_h;
 	}
 
+    //cocos2d-xのコンテンツスケールに合わせてUVを補正する
+    void SSSetPlusDirection(bool flag)
+    {
+        _isContentScaleFactorAuto = flag;
+    }
+
 	/**
 	* ファイル読み込み
 	*/
 	unsigned char* SSFileOpen(const char* pszFileName, const char* pszMode, unsigned long * pSize)
 	{
-		unsigned char * pBuffer = NULL;
-		SS_ASSERT2(pszFileName != NULL && pSize != NULL && pszMode != NULL, "Invalid parameters.");
-		*pSize = 0;
-		do
-		{
-		    // read the file from hardware
-			FILE *fp = fopen(pszFileName, pszMode);
-		    SS_BREAK_IF(!fp);
-		    
-		    fseek(fp,0,SEEK_END);
-		    *pSize = ftell(fp);
-		    fseek(fp,0,SEEK_SET);
-		    pBuffer = new unsigned char[*pSize];
-		    *pSize = fread(pBuffer,sizeof(unsigned char), *pSize,fp);
-		    fclose(fp);
-		} while (0);
-		if (! pBuffer)
-		{
+        std::string fullpath = cocos2d::FileUtils::getInstance()->fullPathForFilename(pszFileName);
+        
+        ssize_t nSize = 0;
+        void* loadData = cocos2d::FileUtils::getInstance()->getFileData(fullpath, pszMode, &nSize);
+        if (loadData == nullptr)
+        {
+            std::string msg = "Can't load project data > " + fullpath;
+            CCASSERT(loadData != nullptr, msg.c_str());
+        }
+        *pSize = (long)nSize;
 
-			std::string msg = "Get data from file(";
-		    msg.append(pszFileName).append(") failed!");
-		    
-		    SSLOG("%s", msg.c_str());
-
-		}
-		return pBuffer;
+		return (unsigned char *)loadData;
 	}
 
 	/**
@@ -234,17 +229,21 @@ namespace ss
 	//各プレイヤーの描画を行う前の初期化処理
 	void SSRenderSetup( void )
 	{
+#if OPENGLES20
+#else
 		glDisableClientState(GL_COLOR_ARRAY);
 		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-
+#endif
 		glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, 0);
 
 		glEnable(GL_BLEND);
 		glDisable(GL_DEPTH_TEST);
+#if OPENGLES20
+#else
 		glEnable(GL_ALPHA_TEST);
 		glAlphaFunc(GL_GREATER, 0.0);
-
+#endif
 		glBlendEquation(GL_FUNC_ADD);
 	}
 
@@ -255,6 +254,8 @@ namespace ss
 	ミックスのみコンスタント値を使う。
 	他は事前に頂点カラーに対してブレンド率を掛けておく事でαも含めてブレンドに対応している。
 	*/
+#if OPENGLES20
+#else
 	void setupPartsColorTextureCombiner(BlendType blendType, VertexFlag colorBlendTarget)
 	{
 		//static const float oneColor[4] = {1.f,1.f,1.f,1.f};
@@ -330,7 +331,7 @@ namespace ss
 			glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA, GL_SRC_ALPHA);
 		}
 	}
-
+#endif
 	//頂点バッファにパラメータを保存する
 	void setClientState(SSV3F_C4B_T2F point, int index, float* uvs, float* colors, float* vertices)
 	{
@@ -353,6 +354,7 @@ namespace ss
 	void SSDrawSprite(CustomSprite *sprite, State *overwrite_state)
 	{
 		if (sprite->_state.isVisibled == false) return; //非表示なので処理をしない
+		if (sprite->_playercontrol == nullptr) return;
 
 		//ステータスから情報を取得し、各プラットフォームに合わせて機能を実装してください。
 		State state;
@@ -425,7 +427,21 @@ namespace ss
 		quad.tr.colors.a = quad.tr.colors.a * alpha;
 		quad.bl.colors.a = quad.bl.colors.a * alpha;
 		quad.br.colors.a = quad.br.colors.a * alpha;
-
+		/*
+				if (_isContentScaleFactorAuto == true)
+				{
+					//ContentScaleFactor対応
+					float cScale = cocos2d::Director::getInstance()->getContentScaleFactor();
+					quad.tl.texCoords.u /= cScale;
+					quad.tr.texCoords.u /= cScale;
+					quad.bl.texCoords.u /= cScale;
+					quad.br.texCoords.u /= cScale;
+					quad.tl.texCoords.v /= cScale;
+					quad.tr.texCoords.v /= cScale;
+					quad.bl.texCoords.v /= cScale;
+					quad.br.texCoords.v /= cScale;
+				}
+		*/
 		//テクスチャ有効
 		int	gl_target = GL_TEXTURE_2D;
 		glEnable(gl_target);
@@ -450,7 +466,11 @@ namespace ss
 			break;
 		case BLEND_SUB:		///< 3 減算
 			glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
+#if OPENGLES20
+			glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ZERO, GL_DST_ALPHA);
+#else
 			glBlendFuncSeparateEXT(GL_SRC_ALPHA, GL_ONE, GL_ZERO, GL_DST_ALPHA);
+#endif
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);//とりあえずミックスにしておく
 			break;
 		case BLEND_MULALPHA:	///< 4 α乗算
@@ -475,6 +495,34 @@ namespace ss
 			return;
 		}
 
+#if OPENGLES20
+/*
+		if (state.flags & PART_FLAG_PARTS_COLOR)
+		{
+			//パーツカラーの反映
+			switch ((BlendType)sprite->_state.partsColorFunc)
+			{
+			case BlendType::BLEND_MIX:
+				sprite->_playercontrol->setGLProgram(sprite->_playercontrol->_partColorMIXShaderProgram);
+				break;
+			case BlendType::BLEND_MUL:
+				sprite->_playercontrol->setGLProgram(sprite->_playercontrol->_partColorMULShaderProgram);
+				break;
+			case BlendType::BLEND_ADD:
+				sprite->_playercontrol->setGLProgram(sprite->_playercontrol->_partColorADDShaderProgram);
+				break;
+			case BlendType::BLEND_SUB:
+				sprite->_playercontrol->setGLProgram(sprite->_playercontrol->_partColorSUBShaderProgram);
+				break;
+			}
+		}
+		else
+		{
+			sprite->_playercontrol->setGLProgram(sprite->_playercontrol->_defaultShaderProgram);
+		}
+*/
+#else
+
 		if (state.flags & PART_FLAG_PARTS_COLOR)
 		{
 			//パーツカラーの反映
@@ -494,6 +542,7 @@ namespace ss
 			glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND1_ALPHA, GL_SRC_ALPHA);
 		}
 
+#endif
 		cocos2d::GL::enableVertexAttribs(cocos2d::GL::VERTEX_ATTRIB_FLAG_POS_COLOR_TEX);
 
 #define kQuadSize sizeof(quad.bl)
@@ -574,10 +623,16 @@ namespace ss
 //
 		glDisable(gl_target);
 		glDisable(GL_TEXTURE_2D);
+#if OPENGLES20
+#else
 		glDisable(GL_ALPHA_TEST);
-		//ブレンドモード　減算時の設定を戻す
+#endif
+        //ブレンドモード　減算時の設定を戻す
 		glBlendEquation(GL_FUNC_ADD);
+#if OPENGLES20
+#else
 		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+#endif
 }
 
 
@@ -617,15 +672,19 @@ namespace ss
 				glStencilFunc(GL_ALWAYS, 1, ~0);  //常に通過
 				glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
 			}
-
+#if OPENGLES20
+#else
 			glEnable(GL_ALPHA_TEST);
-
+#endif
 			//この設定だと
 			//1.0fでは必ず抜けないため非表示フラグなし（＝1.0f)のときの挙動は考えたほうがいい
 
 			//不透明度からマスク閾値へ変更
 			float mask_alpha = (float)(255 - sprite->_state.masklimen) / 255.0f;
+#if OPENGLES20
+#else
 			glAlphaFunc(GL_GREATER, mask_alpha);
+#endif
 			sprite->_state.Calc_opacity = 255;	//マスクパーツは不透明度1.0にする
 		}
 		else {
@@ -642,8 +701,11 @@ namespace ss
 			}
 
 			// 常に無効
+#if OPENGLES20
+#else
 			glDisable(GL_ALPHA_TEST);
-		}
+#endif
+        }
 
 	}
 
@@ -666,7 +728,7 @@ namespace ss
 	/**
 	* 文字コード変換
 	*/ 
-
+#if _WIN32
 	std::string utf8Togbk(const char *src)
 	{
 		int len = MultiByteToWideChar(CP_UTF8, 0, src, -1, NULL, 0);
@@ -687,15 +749,19 @@ namespace ss
 		delete[]wszGBK;
 		return strTemp;
 	}
-
+#endif
 	/**
 	* windows用パスチェック
 	*/ 
 	bool isAbsolutePath(const std::string& strPath)
 	{
 
+#if _WIN32
 		std::string strPathAscii = utf8Togbk(strPath.c_str());
-		if (strPathAscii.length() > 2
+#else
+        std::string strPathAscii = strPath;
+#endif
+        if (strPathAscii.length() > 2
 			&& ((strPathAscii[0] >= 'a' && strPathAscii[0] <= 'z') || (strPathAscii[0] >= 'A' && strPathAscii[0] <= 'Z'))
 			&& strPathAscii[1] == ':')
 		{
