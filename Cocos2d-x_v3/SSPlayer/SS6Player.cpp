@@ -15,11 +15,19 @@ namespace ss
 Cocos2d-xからSSPlayerを使用するためのラッパークラス
 */
 cocos2d::GLProgram* SSPlayerControl::_defaultShaderProgram = nullptr;
-cocos2d::GLProgram* SSPlayerControl::_partColorMASKShaderProgram = nullptr;
-cocos2d::GLProgram* SSPlayerControl::_partColorMIXShaderProgram = nullptr;
+cocos2d::GLProgram* SSPlayerControl::_MASKShaderProgram = nullptr;
+cocos2d::GLProgram* SSPlayerControl::_partColorMIXONEShaderProgram = nullptr;
+cocos2d::GLProgram* SSPlayerControl::_partColorMIXVERTShaderProgram = nullptr;
 cocos2d::GLProgram* SSPlayerControl::_partColorMULShaderProgram = nullptr;
 cocos2d::GLProgram* SSPlayerControl::_partColorADDShaderProgram = nullptr;
 cocos2d::GLProgram* SSPlayerControl::_partColorSUBShaderProgram = nullptr;
+
+std::map<int, int> SSPlayerControl::_MASK_uniform_map;
+std::map<int, int> SSPlayerControl::_MIXONE_uniform_map;
+std::map<int, int> SSPlayerControl::_MIXVERT_uniform_map;
+std::map<int, int> SSPlayerControl::_MUL_uniform_map;
+std::map<int, int> SSPlayerControl::_ADD_uniform_map;
+std::map<int, int> SSPlayerControl::_SUB_uniform_map;
 
 SSPlayerControl::SSPlayerControl()
 {
@@ -114,17 +122,36 @@ precision lowp float;
 varying vec4 v_fragmentColor;
 varying vec2 v_texCoord;
 
+uniform float u_rate;
+
 void main()
 {
 	vec4 pixel = texture2D(CC_Texture0, v_texCoord);
-    if(pixel.a == 0.0)
+    if(pixel.a <= u_rate)
     {
         discard;
     }
     gl_FragColor = v_fragmentColor * pixel;
 }
 )";
-static const GLchar * ssMIXPositionTextureColor_frag = R"(
+static const GLchar * ssMIXONEPositionTextureColor_frag = R"(
+#ifdef GL_ES
+precision lowp float;
+#endif
+
+varying vec4 v_fragmentColor;
+varying vec2 v_texCoord;
+
+uniform float u_rate;
+
+void main()
+{
+	vec4 pixel = texture2D(CC_Texture0, v_texCoord);
+    gl_FragColor.rgb = ( v_fragmentColor.rgb * u_rate ) + ( pixel.rgb * ( 1 - u_rate ) );
+    gl_FragColor.a = pixel.a * v_fragmentColor.a;
+}
+)";
+static const GLchar * ssMIXVERTPositionTextureColor_frag = R"(
 #ifdef GL_ES
 precision lowp float;
 #endif
@@ -135,7 +162,8 @@ varying vec2 v_texCoord;
 void main()
 {
 	vec4 pixel = texture2D(CC_Texture0, v_texCoord);
-    gl_FragColor = v_fragmentColor * pixel;
+    gl_FragColor.rgb = ( v_fragmentColor.rgb * v_fragmentColor.a ) + ( pixel.rgb * ( 1 - v_fragmentColor.a ) );
+    gl_FragColor.a = pixel.a;
 }
 )";
 const char* ssMULPositionTextureColor_frag = R"(
@@ -163,7 +191,8 @@ varying vec2 v_texCoord;
 void main()
 {
 	vec4 pixel = texture2D(CC_Texture0, v_texCoord);
-    gl_FragColor = v_fragmentColor * pixel;
+    gl_FragColor = pixel + v_fragmentColor;
+    gl_FragColor.a = pixel.a * v_fragmentColor.a;
 }
 )";
 static const GLchar * ssSUBPositionTextureColor_frag = R"(
@@ -177,7 +206,8 @@ varying vec2 v_texCoord;
 void main()
 {
 	vec4 pixel = texture2D(CC_Texture0, v_texCoord);
-    gl_FragColor = v_fragmentColor * pixel;
+    gl_FragColor = pixel - v_fragmentColor;
+    gl_FragColor.a = pixel.a * v_fragmentColor.a;
 }
 )";
 
@@ -185,11 +215,11 @@ void SSPlayerControl::initCustomShaderProgram( )
 {
 	using namespace cocos2d;
 
-	if (_defaultShaderProgram == nullptr )
+	if (SSPlayerControl::_defaultShaderProgram == nullptr )
 	{
-		_defaultShaderProgram = this->getGLProgram();
+		SSPlayerControl::_defaultShaderProgram = this->getGLProgram();
 	}
-	if (_partColorMASKShaderProgram == nullptr)
+	if (SSPlayerControl::_MASKShaderProgram == nullptr)
 	{
 		GLProgram* p = nullptr;
 		p = new GLProgram();
@@ -206,17 +236,18 @@ void SSPlayerControl::initCustomShaderProgram( )
 		p->link();
 		p->updateUniforms();
 		// 頂点に付加する情報のロケーションを取得  
-		_MASK_uniform_map[WVP] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_MVP_MATRIX);
-		_MASK_uniform_map[SAMPLER] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_SAMPLER0);
+		SSPlayerControl::_MASK_uniform_map[WVP] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_MVP_MATRIX);
+		SSPlayerControl::_MASK_uniform_map[SAMPLER] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_SAMPLER0);
+		SSPlayerControl::_MASK_uniform_map[RATE] = glGetUniformLocation(p->getProgram(), "u_rate");
 
-		_partColorMASKShaderProgram = p;
+		SSPlayerControl::_MASKShaderProgram = p;
 	}
-	if (_partColorMIXShaderProgram == nullptr)
+	if (SSPlayerControl::_partColorMIXONEShaderProgram == nullptr)
 	{
 		GLProgram* p = nullptr;
 		p = new GLProgram();
 
-		p->initWithByteArrays(ssPositionTextureColor_vartex, ssMIXPositionTextureColor_frag);
+		p->initWithByteArrays(ssPositionTextureColor_vartex, ssMIXONEPositionTextureColor_frag);
 		//	this->setShaderProgram(p);
 
 		// 頂点情報のバインド  
@@ -227,12 +258,34 @@ void SSPlayerControl::initCustomShaderProgram( )
 		p->link();
 		p->updateUniforms();
 		// 頂点に付加する情報のロケーションを取得  
-		_MIX_uniform_map[WVP] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_MVP_MATRIX);
-		_MIX_uniform_map[SAMPLER] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_SAMPLER0);
+		SSPlayerControl::_MIXONE_uniform_map[WVP] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_MVP_MATRIX);
+		SSPlayerControl::_MIXONE_uniform_map[SAMPLER] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_SAMPLER0);
+		SSPlayerControl::_MIXONE_uniform_map[RATE] = glGetUniformLocation(p->getProgram(), "u_rate");
 
-		_partColorMIXShaderProgram = p;
+		SSPlayerControl::_partColorMIXONEShaderProgram = p;
 	}
-	if (_partColorMULShaderProgram == nullptr)
+	if (SSPlayerControl::_partColorMIXVERTShaderProgram == nullptr)
+	{
+		GLProgram* p = nullptr;
+		p = new GLProgram();
+
+		p->initWithByteArrays(ssPositionTextureColor_vartex, ssMIXVERTPositionTextureColor_frag);
+		//	this->setShaderProgram(p);
+
+		// 頂点情報のバインド  
+		glBindAttribLocation(p->getProgram(), cocos2d::GLProgram::VERTEX_ATTRIB_POSITION, GLProgram::ATTRIBUTE_NAME_POSITION);
+		glBindAttribLocation(p->getProgram(), cocos2d::GLProgram::VERTEX_ATTRIB_TEX_COORD, GLProgram::ATTRIBUTE_NAME_TEX_COORD);
+		glBindAttribLocation(p->getProgram(), cocos2d::GLProgram::VERTEX_ATTRIB_COLOR, GLProgram::ATTRIBUTE_NAME_COLOR);
+
+		p->link();
+		p->updateUniforms();
+		// 頂点に付加する情報のロケーションを取得  
+		SSPlayerControl::_MIXVERT_uniform_map[WVP] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_MVP_MATRIX);
+		SSPlayerControl::_MIXVERT_uniform_map[SAMPLER] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_SAMPLER0);
+
+		SSPlayerControl::_partColorMIXVERTShaderProgram = p;
+	}
+	if (SSPlayerControl::_partColorMULShaderProgram == nullptr)
 	{
 		GLProgram* p = nullptr;
 		p = new GLProgram();
@@ -248,12 +301,12 @@ void SSPlayerControl::initCustomShaderProgram( )
 		p->link();
 		p->updateUniforms();
 		// 頂点に付加する情報のロケーションを取得  
-		_MUL_uniform_map[WVP] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_MVP_MATRIX);
-		_MUL_uniform_map[SAMPLER] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_SAMPLER0);
+		SSPlayerControl::_MUL_uniform_map[WVP] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_MVP_MATRIX);
+		SSPlayerControl::_MUL_uniform_map[SAMPLER] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_SAMPLER0);
 
-		_partColorMULShaderProgram = p;
+		SSPlayerControl::_partColorMULShaderProgram = p;
 	}
-	if (_partColorADDShaderProgram == nullptr)
+	if (SSPlayerControl::_partColorADDShaderProgram == nullptr)
 	{
 		GLProgram* p = nullptr;
 		p = new GLProgram();
@@ -269,12 +322,12 @@ void SSPlayerControl::initCustomShaderProgram( )
 		p->link();
 		p->updateUniforms();
 		// 頂点に付加する情報のロケーションを取得  
-		_ADD_uniform_map[WVP] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_MVP_MATRIX);
-		_ADD_uniform_map[SAMPLER] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_SAMPLER0);
+		SSPlayerControl::_ADD_uniform_map[WVP] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_MVP_MATRIX);
+		SSPlayerControl::_ADD_uniform_map[SAMPLER] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_SAMPLER0);
 
-		_partColorADDShaderProgram = p;
+		SSPlayerControl::_partColorADDShaderProgram = p;
 	}
-	if (_partColorSUBShaderProgram == nullptr)
+	if (SSPlayerControl::_partColorSUBShaderProgram == nullptr)
 	{
 		GLProgram* p = nullptr;
 		p = new GLProgram();
@@ -290,10 +343,10 @@ void SSPlayerControl::initCustomShaderProgram( )
 		p->link();
 		p->updateUniforms();
 		// 頂点に付加する情報のロケーションを取得  
-		_SUB_uniform_map[WVP] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_MVP_MATRIX);
-		_SUB_uniform_map[SAMPLER] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_SAMPLER0);
+		SSPlayerControl::_SUB_uniform_map[WVP] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_MVP_MATRIX);
+		SSPlayerControl::_SUB_uniform_map[SAMPLER] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_SAMPLER0);
 
-		_partColorSUBShaderProgram = p;
+		SSPlayerControl::_partColorSUBShaderProgram = p;
 	}
 }
 
@@ -2165,6 +2218,7 @@ void Player::setPartsParentage()
 		{
 			//インスタンスパーツが設定されている
 			sprite->_ssplayer = ss::Player::create();
+			sprite->_ssplayer->_playercontrol = this->_playercontrol;
 			sprite->_ssplayer->setMaskFuncFlag(false);
 			sprite->_ssplayer->setMaskParentSetting(partData->maskInfluence);
 
@@ -2999,13 +3053,14 @@ void Player::setFrame(int frameNo, float dt)
 			int typeAndFlags = reader.readU16();
 			int funcNo = typeAndFlags & 0xff;
 			int cb_flags = (typeAndFlags >> 8) & 0xff;
+			float blend_rate = 1.0f;
 
 			state.partsColorFunc = funcNo;
 			state.partsColorType = cb_flags;
 
-			//制限となります。
 			if (cb_flags & VERTEX_FLAG_ONE)
 			{
+				blend_rate = reader.readFloat();
 				reader.readColor(color4);
 
 
@@ -3013,32 +3068,52 @@ void Player::setFrame(int frameNo, float dt)
 				color4.g = color4.g * _col_g / 255;
 				color4.b = color4.b * _col_b / 255;
 
+				if ( funcNo == BLEND_MIX)
+				{
+					//ブレンド方法　MIX　かつ　単色の場合はAは255固定で処理する
+					color4.a = 255;
+				}
+
 				quad.tl.colors =
 				quad.tr.colors =
 				quad.bl.colors =
 				quad.br.colors = color4;
+
+				state.rate.oneRate = blend_rate;
 			}
 			else
 			{
 				if (cb_flags & VERTEX_FLAG_LT)
 				{
+					blend_rate = reader.readFloat();
 					reader.readColor(color4);
 					quad.tl.colors = color4;
+
+					state.rate.vartTLRate = blend_rate;
 				}
 				if (cb_flags & VERTEX_FLAG_RT)
 				{
+					blend_rate = reader.readFloat();
 					reader.readColor(color4);
 					quad.tr.colors = color4;
+
+					state.rate.vartTRRate = blend_rate;
 				}
 				if (cb_flags & VERTEX_FLAG_LB)
 				{
+					blend_rate = reader.readFloat();
 					reader.readColor(color4);
 					quad.bl.colors = color4;
+
+					state.rate.vartBLRate = blend_rate;
 				}
 				if (cb_flags & VERTEX_FLAG_RB)
 				{
+					blend_rate = reader.readFloat();
 					reader.readColor(color4);
 					quad.br.colors = color4;
+
+					state.rate.vartBRRate = blend_rate;
 				}
 			}
 		}

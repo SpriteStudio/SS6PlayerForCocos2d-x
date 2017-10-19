@@ -414,6 +414,20 @@ typedef struct _SSV3F_C4B_T2F_Quad
 	SSV3F_C4B_T2F    br;
 } SSV3F_C4B_T2F_Quad;
 
+/**
+* パーツカラーレート構造体
+*/
+typedef struct _SSPARTCOLOR_RATE
+{
+	float oneRate;		//単色を選択時のレート
+	float vartTLRate;	//頂点を選択時の左上レート
+	float vartBLRate;	//頂点を選択時の左下レート
+	float vartTRRate;	//頂点を選択時の右上レート
+	float vartBRRate;	//頂点を選択時の右下レート
+} SSPARTCOLOR_RATE;
+
+
+
 //テクスチャデータ
 struct TextuerData
 {

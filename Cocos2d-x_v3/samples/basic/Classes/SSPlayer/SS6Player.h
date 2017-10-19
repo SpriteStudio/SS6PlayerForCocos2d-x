@@ -140,7 +140,7 @@ enum {
 enum {
 	WVP,
 	SAMPLER,
-	GREATER,
+	RATE,
 };
 
 /**
@@ -181,17 +181,19 @@ public:
 	void initCustomShaderProgram( );
 
 	static cocos2d::GLProgram*	_defaultShaderProgram;
-	static cocos2d::GLProgram*	_partColorMASKShaderProgram;
-	static cocos2d::GLProgram*	_partColorMIXShaderProgram;
+	static cocos2d::GLProgram*	_MASKShaderProgram;
+	static cocos2d::GLProgram*	_partColorMIXONEShaderProgram;
+	static cocos2d::GLProgram*	_partColorMIXVERTShaderProgram;
 	static cocos2d::GLProgram*	_partColorMULShaderProgram;
 	static cocos2d::GLProgram*	_partColorADDShaderProgram;
 	static cocos2d::GLProgram*	_partColorSUBShaderProgram;
 
-	std::map<int, int> _MASK_uniform_map;
-	std::map<int, int> _MIX_uniform_map;
-	std::map<int, int> _MUL_uniform_map;
-	std::map<int, int> _ADD_uniform_map;
-	std::map<int, int> _SUB_uniform_map;
+	static std::map<int, int> _MASK_uniform_map;
+	static std::map<int, int> _MIXONE_uniform_map;
+	static std::map<int, int> _MIXVERT_uniform_map;
+	static std::map<int, int> _MUL_uniform_map;
+	static std::map<int, int> _ADD_uniform_map;
+	static std::map<int, int> _SUB_uniform_map;
 private:
 	Player *_ssp;
 	cocos2d::CustomCommand _customCommand;
@@ -237,6 +239,7 @@ struct State
 	bool flipY;						/// 縦反転（親子関係計算済）
 	bool isVisibled;				/// 非表示（親子関係計算済）
 	SSV3F_C4B_T2F_Quad quad;		/// 頂点データ、座標、カラー値、UVが含まれる（頂点変形、サイズXY、UV移動XY、UVスケール、UV回転、反転が反映済）
+	SSPARTCOLOR_RATE rate;			/// パーツカラーに含まれるレート
 	TextuerData texture;			/// セルに対応したテクスチャ番号（ゲーム側で管理している番号を設定する）
 	SSRect rect;					/// セルに対応したテクスチャ内の表示領域（開始座標、幅高さ）
 	int blendfunc;					/// パーツに設定されたブレンド方法
@@ -291,6 +294,11 @@ struct State
 		priority = 0;
 		partsColorFunc = 0;
 		partsColorType = 0;
+		rate.oneRate = 1.0f;
+		rate.vartTLRate = 1.0f;
+		rate.vartTRRate = 1.0f;
+		rate.vartBLRate = 1.0f;
+		rate.vartBRRate = 1.0f;
 		flipX = false;
 		flipY = false;
 		isVisibled = false;
@@ -414,6 +422,15 @@ public:
 		}
 	}
 
+	void setStateValue(SSPARTCOLOR_RATE& ref, SSPARTCOLOR_RATE value)
+	{
+		//		if (ref != value)
+		{
+			ref = value;
+			_isStateChanged = true;
+		}
+	}
+
 	void setState(const State& state)
 	{
 		_state.name = state.name;
@@ -449,11 +466,13 @@ public:
 		setStateValue(_state.blendfunc, state.blendfunc);
 		setStateValue(_state.partsColorFunc, state.partsColorFunc);
 		setStateValue(_state.partsColorType, state.partsColorType);
-
 		setStateValue(_state.quad, state.quad);
+		setStateValue(_state.rate, state.rate);
+
 		_state.texture = state.texture;
 		_state.rect = state.rect;
 		memcpy(&_state.mat, &state.mat, sizeof(_state.mat));
+
 
 		setStateValue(_state.instanceValue_curKeyframe, state.instanceValue_curKeyframe);
 		setStateValue(_state.instanceValue_startFrame, state.instanceValue_startFrame);
