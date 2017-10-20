@@ -3637,6 +3637,8 @@ void Player::draw()
 		}
 	}
 	enableMask(false);
+	SSRenderEnd();
+
 }
 
 void Player::checkUserData(int frameNo)

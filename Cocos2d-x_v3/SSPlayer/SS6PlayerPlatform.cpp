@@ -226,6 +226,29 @@ namespace ss
 		return true;
 	}
 
+	/**
+	* 描画ステータス
+	*/
+	struct SSDrawState
+	{
+		int texture;
+		int partType;
+		int partBlendfunc;
+		int partsColorUse;
+		int partsColorFunc;
+		int partsColorType;
+		void init(void)
+		{
+			texture = -1;
+			partType = -1;
+			partBlendfunc = -1;
+			partsColorUse = -1;
+			partsColorFunc = -1;
+			partsColorType = -1;
+		}
+	};
+	SSDrawState _ssDrawState;
+
 	//各プレイヤーの描画を行う前の初期化処理
 	void SSRenderSetup( void )
 	{
@@ -245,6 +268,26 @@ namespace ss
 		glAlphaFunc(GL_GREATER, 0.0);
 #endif
 		glBlendEquation(GL_FUNC_ADD);
+
+		cocos2d::GL::enableVertexAttribs(cocos2d::GL::VERTEX_ATTRIB_FLAG_POS_COLOR_TEX);
+
+		_ssDrawState.init();
+	}
+	void SSRenderEnd(void)
+	{
+//		CC_INCREMENT_GL_DRAWS(1);
+
+		glDisable(GL_TEXTURE_2D);
+#if OPENGLES20
+#else
+		glDisable(GL_ALPHA_TEST);
+#endif
+		//ブレンドモード　減算時の設定を戻す
+		glBlendEquation(GL_FUNC_ADD);
+#if OPENGLES20
+#else
+		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+#endif
 	}
 
 	/**
@@ -427,70 +470,61 @@ namespace ss
 		quad.tr.colors.a = quad.tr.colors.a * alpha;
 		quad.bl.colors.a = quad.bl.colors.a * alpha;
 		quad.br.colors.a = quad.br.colors.a * alpha;
-		/*
-				if (_isContentScaleFactorAuto == true)
-				{
-					//ContentScaleFactor対応
-					float cScale = cocos2d::Director::getInstance()->getContentScaleFactor();
-					quad.tl.texCoords.u /= cScale;
-					quad.tr.texCoords.u /= cScale;
-					quad.bl.texCoords.u /= cScale;
-					quad.br.texCoords.u /= cScale;
-					quad.tl.texCoords.v /= cScale;
-					quad.tr.texCoords.v /= cScale;
-					quad.bl.texCoords.v /= cScale;
-					quad.br.texCoords.v /= cScale;
-				}
-		*/
+
 		//テクスチャ有効
 		int	gl_target = GL_TEXTURE_2D;
-		glEnable(gl_target);
+		if (_ssDrawState.texture != texture[tex_index]->getName())
+		{
+			glEnable(gl_target);
 
-		//テクスチャのバインド
-		glBindTexture(gl_target, texture[tex_index]->getName());
-
+			//テクスチャのバインド
+			glBindTexture(gl_target, texture[tex_index]->getName());
+		}
 
 		//描画モード
 		//
-		glBlendEquation(GL_FUNC_ADD);
-		switch (state.blendfunc)
+		if (_ssDrawState.partBlendfunc != state.blendfunc)
 		{
-		case BLEND_MIX:		///< 0 ブレンド（ミックス）
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			break;
-		case BLEND_MUL:		///< 1 乗算
-			glBlendFunc(GL_ZERO, GL_SRC_COLOR);
-			break;
-		case BLEND_ADD:		///< 2 加算
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-			break;
-		case BLEND_SUB:		///< 3 減算
-			glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
+			glBlendEquation(GL_FUNC_ADD);
+			switch (state.blendfunc)
+			{
+			case BLEND_MIX:		///< 0 ブレンド（ミックス）
+				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+				break;
+			case BLEND_MUL:		///< 1 乗算
+				glBlendFunc(GL_ZERO, GL_SRC_COLOR);
+				break;
+			case BLEND_ADD:		///< 2 加算
+				glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+				break;
+			case BLEND_SUB:		///< 3 減算
+				glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
 #if OPENGLES20
-			glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ZERO, GL_DST_ALPHA);
+				glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ZERO, GL_DST_ALPHA);
 #else
-			glBlendFuncSeparateEXT(GL_SRC_ALPHA, GL_ONE, GL_ZERO, GL_DST_ALPHA);
+				glBlendFuncSeparateEXT(GL_SRC_ALPHA, GL_ONE, GL_ZERO, GL_DST_ALPHA);
 #endif
-			break;
-		case BLEND_MULALPHA:	///< 4 α乗算
-			glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
-			break;
-		case BLEND_SCREEN:		///< 5 スクリーン
-			glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ONE);
-			break;
-		case BLEND_EXCLUSION:	///< 6 除外
-			glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ONE_MINUS_SRC_COLOR);
-			break;
-		case BLEND_INVERT:		///< 7 反転
-			glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ZERO);
-			break;
+				break;
+			case BLEND_MULALPHA:	///< 4 α乗算
+				glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
+				break;
+			case BLEND_SCREEN:		///< 5 スクリーン
+				glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ONE);
+				break;
+			case BLEND_EXCLUSION:	///< 6 除外
+				glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ONE_MINUS_SRC_COLOR);
+				break;
+			case BLEND_INVERT:		///< 7 反転
+				glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ZERO);
+				break;
 
+			}
 		}
 
 		//メッシュの場合描画
 		if (sprite->_partData.type == PARTTYPE_MESH)
 		{
-			//			this->renderMesh(state->meshPart, alpha);
+			//			renderMesh(state->meshPart, alpha);
 			return;
 		}
 
@@ -498,87 +532,98 @@ namespace ss
 		const auto& matrixP = cocos2d::Director::getInstance()->getMatrix(cocos2d::MATRIX_STACK_TYPE::MATRIX_STACK_PROJECTION);
 		cocos2d::Mat4 matrixMVP = matrixP;
 
+		bool ispartColor = (state.flags & PART_FLAG_PARTS_COLOR);
 		if (sprite->_partData.type == PARTTYPE_MASK)
 		{
-			//不透明度からマスク閾値へ変更
-			float mask_alpha = (float)(255 - sprite->_state.masklimen) / 255.0f;
+			if (_ssDrawState.partType != sprite->_partData.type)
+			{
+				//不透明度からマスク閾値へ変更
+				float mask_alpha = (float)(255 - state.masklimen) / 255.0f;
 
-			//シェーダーを適用する
-			sprite->_playercontrol->setGLProgram(SSPlayerControl::_MASKShaderProgram);
-			sprite->_playercontrol->getShaderProgram()->use();
-			//マトリクスを設定
-			glUniformMatrix4fv(SSPlayerControl::_MIXONE_uniform_map[(int)WVP], 1, 0, (float *)&matrixMVP.m);
-			// テクスチャサンプラ情報をシェーダーに送る  
-			glUniform1i(SSPlayerControl::_MASK_uniform_map[SAMPLER], 0);
-			glUniform1f(SSPlayerControl::_MASK_uniform_map[RATE], mask_alpha);
+				//シェーダーを適用する
+				sprite->_playercontrol->setGLProgram(SSPlayerControl::_MASKShaderProgram);
+				sprite->_playercontrol->getShaderProgram()->use();
+				//マトリクスを設定
+				glUniformMatrix4fv(SSPlayerControl::_MIXONE_uniform_map[(int)WVP], 1, 0, (float *)&matrixMVP.m);
+				// テクスチャサンプラ情報をシェーダーに送る  
+				glUniform1i(SSPlayerControl::_MASK_uniform_map[SAMPLER], 0);
+				glUniform1f(SSPlayerControl::_MASK_uniform_map[RATE], mask_alpha);
+			}
 		}
 		else
 		{
-			if (state.flags & PART_FLAG_PARTS_COLOR)
+			if (
+				 (_ssDrawState.partsColorFunc != state.partsColorFunc)
+			  || (_ssDrawState.partsColorType != state.partsColorType)
+			  || ( _ssDrawState.partsColorUse != ispartColor)
+			   )
 			{
-
-				//パーツカラーの反映
-				switch ((BlendType)state.partsColorFunc)
+				if (state.flags & PART_FLAG_PARTS_COLOR)
 				{
-				case BlendType::BLEND_MIX:
-					if ((VertexFlag)state.partsColorType == VertexFlag::VERTEX_FLAG_ONE)
+					//パーツカラーの反映
+					switch ((BlendType)state.partsColorFunc)
 					{
+					case BlendType::BLEND_MIX:
+						if ((VertexFlag)state.partsColorType == VertexFlag::VERTEX_FLAG_ONE)
+						{
+							//シェーダーを適用する
+							sprite->_playercontrol->setGLProgram(SSPlayerControl::_partColorMIXONEShaderProgram);
+							sprite->_playercontrol->getShaderProgram()->use();
+							//マトリクスを設定
+							glUniformMatrix4fv(SSPlayerControl::_MIXONE_uniform_map[(int)WVP], 1, 0, (float *)&matrixMVP.m);
+							// テクスチャサンプラ情報をシェーダーに送る  
+							glUniform1i(SSPlayerControl::_MIXONE_uniform_map[SAMPLER], 0);
+							glUniform1f(SSPlayerControl::_MIXONE_uniform_map[RATE], state.rate.oneRate);
+						}
+						else
+						{
+							//シェーダーを適用する
+							sprite->_playercontrol->setGLProgram(SSPlayerControl::_partColorMIXVERTShaderProgram);
+							sprite->_playercontrol->getShaderProgram()->use();
+							//マトリクスを設定
+							glUniformMatrix4fv(SSPlayerControl::_MIXVERT_uniform_map[WVP], 1, 0, (float *)&matrixMVP.m);
+							// テクスチャサンプラ情報をシェーダーに送る  
+							glUniform1i(SSPlayerControl::_MIXVERT_uniform_map[SAMPLER], 0);
+						}
+						break;
+					case BlendType::BLEND_MUL:
 						//シェーダーを適用する
-						sprite->_playercontrol->setGLProgram(SSPlayerControl::_partColorMIXONEShaderProgram);
+						sprite->_playercontrol->setGLProgram(SSPlayerControl::_partColorMULShaderProgram);
 						sprite->_playercontrol->getShaderProgram()->use();
 						//マトリクスを設定
-						glUniformMatrix4fv(SSPlayerControl::_MIXONE_uniform_map[(int)WVP], 1, 0, (float *)&matrixMVP.m);
+						glUniformMatrix4fv(SSPlayerControl::_MUL_uniform_map[WVP], 1, 0, (float *)&matrixMVP.m);
 						// テクスチャサンプラ情報をシェーダーに送る  
-						glUniform1i(SSPlayerControl::_MIXONE_uniform_map[SAMPLER], 0);
-						glUniform1f(SSPlayerControl::_MIXONE_uniform_map[RATE], state.rate.oneRate);
-					}
-					else
-					{
+						glUniform1i(SSPlayerControl::_MUL_uniform_map[SAMPLER], 0);
+						break;
+					case BlendType::BLEND_ADD:
 						//シェーダーを適用する
-						sprite->_playercontrol->setGLProgram(SSPlayerControl::_partColorMIXVERTShaderProgram);
+						sprite->_playercontrol->setGLProgram(SSPlayerControl::_partColorADDShaderProgram);
 						sprite->_playercontrol->getShaderProgram()->use();
 						//マトリクスを設定
-						glUniformMatrix4fv(SSPlayerControl::_MIXVERT_uniform_map[WVP], 1, 0, (float *)&matrixMVP.m);
+						glUniformMatrix4fv(SSPlayerControl::_ADD_uniform_map[WVP], 1, 0, (float *)&matrixMVP.m);
 						// テクスチャサンプラ情報をシェーダーに送る  
-						glUniform1i(SSPlayerControl::_MIXVERT_uniform_map[SAMPLER], 0);
+						glUniform1i(SSPlayerControl::_ADD_uniform_map[SAMPLER], 0);
+						break;
+					case BlendType::BLEND_SUB:
+						//シェーダーを適用する
+						sprite->_playercontrol->setGLProgram(SSPlayerControl::_partColorSUBShaderProgram);
+						sprite->_playercontrol->getShaderProgram()->use();
+						//マトリクスを設定
+						glUniformMatrix4fv(SSPlayerControl::_SUB_uniform_map[WVP], 1, 0, (float *)&matrixMVP.m);
+						// テクスチャサンプラ情報をシェーダーに送る  
+						glUniform1i(SSPlayerControl::_SUB_uniform_map[SAMPLER], 0);
+						break;
 					}
-					break;
-				case BlendType::BLEND_MUL:
-					//シェーダーを適用する
-					sprite->_playercontrol->setGLProgram(SSPlayerControl::_partColorMULShaderProgram);
+				}
+				else
+				{
+					//パーツカラーが設定されていない場合はディフォルトシェーダーを使用する
+					sprite->_playercontrol->setGLProgram(sprite->_playercontrol->_defaultShaderProgram);
 					sprite->_playercontrol->getShaderProgram()->use();
-					//マトリクスを設定
-					glUniformMatrix4fv(SSPlayerControl::_MUL_uniform_map[WVP], 1, 0, (float *)&matrixMVP.m);
-					// テクスチャサンプラ情報をシェーダーに送る  
-					glUniform1i(SSPlayerControl::_MUL_uniform_map[SAMPLER], 0);
-					break;
-				case BlendType::BLEND_ADD:
-					//シェーダーを適用する
-					sprite->_playercontrol->setGLProgram(SSPlayerControl::_partColorADDShaderProgram);
-					sprite->_playercontrol->getShaderProgram()->use();
-					//マトリクスを設定
-					glUniformMatrix4fv(SSPlayerControl::_ADD_uniform_map[WVP], 1, 0, (float *)&matrixMVP.m);
-					// テクスチャサンプラ情報をシェーダーに送る  
-					glUniform1i(SSPlayerControl::_ADD_uniform_map[SAMPLER], 0);
-					break;
-				case BlendType::BLEND_SUB:
-					//シェーダーを適用する
-					sprite->_playercontrol->setGLProgram(SSPlayerControl::_partColorSUBShaderProgram);
-					sprite->_playercontrol->getShaderProgram()->use();
-					//マトリクスを設定
-					glUniformMatrix4fv(SSPlayerControl::_SUB_uniform_map[WVP], 1, 0, (float *)&matrixMVP.m);
-					// テクスチャサンプラ情報をシェーダーに送る  
-					glUniform1i(SSPlayerControl::_SUB_uniform_map[SAMPLER], 0);
-					break;
 				}
 			}
-			else
-			{
-				//パーツカラーが設定されていない場合はディフォルトシェーダーを使用する
-				sprite->_playercontrol->setGLProgram(sprite->_playercontrol->_defaultShaderProgram);
-				sprite->_playercontrol->getShaderProgram()->use();
-			}
 		}
+
 #else
 		sprite->_playercontrol->setGLProgram(sprite->_playercontrol->_defaultShaderProgram);
 		sprite->_playercontrol->getShaderProgram()->use();
@@ -603,7 +648,7 @@ namespace ss
 		}
 
 #endif
-		cocos2d::GL::enableVertexAttribs(cocos2d::GL::VERTEX_ATTRIB_FLAG_POS_COLOR_TEX);
+//		cocos2d::GL::enableVertexAttribs(cocos2d::GL::VERTEX_ATTRIB_FLAG_POS_COLOR_TEX);
 
 #define kQuadSize sizeof(quad.bl)
 		long offset = (long)&quad;
@@ -647,11 +692,15 @@ namespace ss
 		}
 #endif // CC_SPRITE_DEBUG_DRAW
 
-
-		CC_INCREMENT_GL_DRAWS(1);
-
 		CHECK_GL_ERROR_DEBUG();
 
+		//レンダリングステートの保存
+		_ssDrawState.texture = texture[tex_index]->getName();
+		_ssDrawState.partType = sprite->_partData.type;
+		_ssDrawState.partBlendfunc = state.blendfunc;
+		_ssDrawState.partsColorFunc = state.partsColorFunc;
+		_ssDrawState.partsColorType = state.partsColorType;
+		_ssDrawState.partsColorUse = (int)ispartColor;
 
 /*
 		float	uvs[10];			// UVバッファ
@@ -676,23 +725,6 @@ namespace ss
 		// 頂点配列を描画
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 */
-
-
-
-
-//
-		glDisable(gl_target);
-		glDisable(GL_TEXTURE_2D);
-#if OPENGLES20
-#else
-		glDisable(GL_ALPHA_TEST);
-#endif
-        //ブレンドモード　減算時の設定を戻す
-		glBlendEquation(GL_FUNC_ADD);
-#if OPENGLES20
-#else
-		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-#endif
 }
 
 
@@ -717,56 +749,60 @@ namespace ss
 
 	void execMask(CustomSprite *sprite)
 	{
-		glEnable(GL_STENCIL_TEST);
-		if (sprite->_partData.type == PARTTYPE_MASK)
+		if (_ssDrawState.partType != sprite->_partData.type)
 		{
-
-			glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-
-			if (!(sprite->_maskInfluence)) { //マスクが有効では無い＝重ね合わせる
-				glStencilFunc(GL_ALWAYS, 1, ~0);  //常に通過
-				glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-				//描画部分を1へ
-			}
-			else {
-				glStencilFunc(GL_ALWAYS, 1, ~0);  //常に通過
-				glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
-			}
-#if OPENGLES20
-#else
-			glEnable(GL_ALPHA_TEST);
-#endif
-			//この設定だと
-			//1.0fでは必ず抜けないため非表示フラグなし（＝1.0f)のときの挙動は考えたほうがいい
-
-			//不透明度からマスク閾値へ変更
-			float mask_alpha = (float)(255 - sprite->_state.masklimen) / 255.0f;
-#if OPENGLES20
-#else
-			glAlphaFunc(GL_GREATER, mask_alpha);
-#endif
-			sprite->_state.Calc_opacity = 255;	//マスクパーツは不透明度1.0にする
-		}
-		else {
-
-			if ((sprite->_maskInfluence)) //パーツに対してのマスクが有効か否か
+			glEnable(GL_STENCIL_TEST);
+			if (sprite->_partData.type == PARTTYPE_MASK)
 			{
-				glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-				glStencilFunc(GL_NOTEQUAL, 0x1, 0x1);  //1と等しい
-				glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-			}
-			else {
-				glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-				glDisable(GL_STENCIL_TEST);
-			}
 
-			// 常に無効
+				glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+				//			cocos2d::Director::getInstance()->setDefaultValues
+
+				if (!(sprite->_maskInfluence)) { //マスクが有効では無い＝重ね合わせる
+					glStencilFunc(GL_ALWAYS, 1, ~0);  //常に通過
+					glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+					//描画部分を1へ
+				}
+				else {
+					glStencilFunc(GL_ALWAYS, 1, ~0);  //常に通過
+					glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
+				}
 #if OPENGLES20
 #else
-			glDisable(GL_ALPHA_TEST);
+				glEnable(GL_ALPHA_TEST);
 #endif
-        }
+				//この設定だと
+				//1.0fでは必ず抜けないため非表示フラグなし（＝1.0f)のときの挙動は考えたほうがいい
 
+				//不透明度からマスク閾値へ変更
+				float mask_alpha = (float)(255 - sprite->_state.masklimen) / 255.0f;
+#if OPENGLES20
+#else
+				glAlphaFunc(GL_GREATER, mask_alpha);
+#endif
+				sprite->_state.Calc_opacity = 255;	//マスクパーツは不透明度1.0にする
+			}
+			else {
+
+				if ((sprite->_maskInfluence)) //パーツに対してのマスクが有効か否か
+				{
+					glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+					glStencilFunc(GL_NOTEQUAL, 0x1, 0x1);  //1と等しい
+					glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+				}
+				else {
+					glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+					glDisable(GL_STENCIL_TEST);
+				}
+
+				// 常に無効
+#if OPENGLES20
+#else
+				glDisable(GL_ALPHA_TEST);
+#endif
+			}
+		}
 	}
 
 	/**
