@@ -426,8 +426,6 @@ typedef struct _SSPARTCOLOR_RATE
 	float vartBRRate;	//頂点を選択時の右下レート
 } SSPARTCOLOR_RATE;
 
-
-
 //テクスチャデータ
 struct TextuerData
 {

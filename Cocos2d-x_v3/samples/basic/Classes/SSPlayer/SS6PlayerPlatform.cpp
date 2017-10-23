@@ -237,6 +237,7 @@ namespace ss
 		int partsColorUse;
 		int partsColorFunc;
 		int partsColorType;
+		int maskInfluence;
 		void init(void)
 		{
 			texture = -1;
@@ -245,6 +246,7 @@ namespace ss
 			partsColorUse = -1;
 			partsColorFunc = -1;
 			partsColorType = -1;
+			maskInfluence = -1;
 		}
 	};
 	SSDrawState _ssDrawState;
@@ -299,10 +301,10 @@ namespace ss
 	*/
 #if OPENGLES20
 #else
-	void setupPartsColorTextureCombiner(BlendType blendType, VertexFlag colorBlendTarget)
+	void setupPartsColorTextureCombiner(BlendType blendType, VertexFlag colorBlendTarget, SSPARTCOLOR_RATE rate)
 	{
 		//static const float oneColor[4] = {1.f,1.f,1.f,1.f};
-		float constColor[4] = { 0.5f,0.5f,0.5f,1.0f };
+		float constColor[4] = { 0.5f,0.5f,0.5f,rate };
 		static const GLuint funcs[] = { GL_INTERPOLATE, GL_MODULATE, GL_ADD, GL_SUBTRACT };
 		GLuint func = funcs[(int)blendType];
 		GLuint srcRGB = GL_TEXTURE0;
@@ -535,7 +537,7 @@ namespace ss
 		bool ispartColor = (state.flags & PART_FLAG_PARTS_COLOR);
 		if (sprite->_partData.type == PARTTYPE_MASK)
 		{
-			if (_ssDrawState.partType != sprite->_partData.type)
+//			if (_ssDrawState.partType != sprite->_partData.type)
 			{
 				//不透明度からマスク閾値へ変更
 				float mask_alpha = (float)(255 - state.masklimen) / 255.0f;
@@ -552,12 +554,12 @@ namespace ss
 		}
 		else
 		{
-			if (
-				 (_ssDrawState.partsColorFunc != state.partsColorFunc)
-			  || (_ssDrawState.partsColorType != state.partsColorType)
-			  || ( _ssDrawState.partsColorUse != ispartColor)
-			  || (sprite->_partData.type == PARTTYPE_MASK)
-			   )
+//			if (
+//				 (_ssDrawState.partsColorFunc != state.partsColorFunc)
+//			  || (_ssDrawState.partsColorType != state.partsColorType)
+//			  || ( _ssDrawState.partsColorUse != ispartColor)
+//			  || (sprite->_partData.type == PARTTYPE_MASK)
+//			   )
 			{
 				if (state.flags & PART_FLAG_PARTS_COLOR)
 				{
@@ -702,6 +704,7 @@ namespace ss
 		_ssDrawState.partsColorFunc = state.partsColorFunc;
 		_ssDrawState.partsColorType = state.partsColorType;
 		_ssDrawState.partsColorUse = (int)ispartColor;
+		_ssDrawState.maskInfluence = (int)sprite->_maskInfluence;
 
 /*
 		float	uvs[10];			// UVバッファ
@@ -746,11 +749,16 @@ namespace ss
 			glDisable(GL_STENCIL_TEST);
 			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 		}
+		_ssDrawState.maskInfluence = -1;		//マスクを実行する
+		_ssDrawState.partType = -1;		//マスクを実行する
 	}
 
 	void execMask(CustomSprite *sprite)
 	{
-		if (_ssDrawState.partType != sprite->_partData.type)
+		if (
+			(_ssDrawState.partType != sprite->_partData.type)
+			|| (_ssDrawState.maskInfluence != (int)sprite->_maskInfluence)
+		   )
 		{
 			glEnable(GL_STENCIL_TEST);
 			if (sprite->_partData.type == PARTTYPE_MASK)
@@ -804,22 +812,6 @@ namespace ss
 #endif
 			}
 		}
-	}
-
-	/**
-	* ユーザーデータの取得
-	*/
-	void SSonUserData(Player *player, UserData *userData)
-	{
-		//ゲーム側へユーザーデータを設定する関数を呼び出してください。
-	}
-
-	/**
-	* ユーザーデータの取得
-	*/
-	void SSPlayEnd(Player *player)
-	{
-		//ゲーム側へアニメ再生終了を設定する関数を呼び出してください。
 	}
 
 	/**

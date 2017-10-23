@@ -2120,7 +2120,6 @@ void Player::updateFrame(float dt)
 		stop();
 	
 		// 再生終了コールバックの呼び出し
-//		SSPlayEnd(this);
 		if (_playEndCallback)
 		{
 			_playEndCallback(this);
@@ -3049,7 +3048,6 @@ void Player::setFrame(int frameNo, float dt)
 		// パーツカラーの反映
 		if (flags & PART_FLAG_PARTS_COLOR)
 		{
-
 			int typeAndFlags = reader.readU16();
 			int funcNo = typeAndFlags & 0xff;
 			int cb_flags = (typeAndFlags >> 8) & 0xff;
@@ -3561,7 +3559,10 @@ void Player::draw()
 
 	if (!_currentAnimeRef) return;
 
-	SSRenderSetup();
+	if (_maskFuncFlag == true) //マスク機能が有効（インスタンスのソースアニメではない）
+	{
+		SSRenderSetup();
+	}
 
 	ToPointer ptr(_currentRs->data);
 	const AnimePackData* packData = _currentAnimeRef->animePackData;
@@ -3636,8 +3637,11 @@ void Player::draw()
 			}
 		}
 	}
-	enableMask(false);
-	SSRenderEnd();
+	if (_maskFuncFlag == true) //マスク機能が有効（インスタンスのソースアニメではない）
+	{
+		enableMask(false);
+		SSRenderEnd();
+	}
 
 }
 
@@ -3724,7 +3728,6 @@ void Player::checkUserData(int frameNo)
 		_userData.frameNo = frameNo;
 		
 		_userDataCallback(this, &_userData);
-//		SSonUserData(this, &_userData);
 	}
 
 }
