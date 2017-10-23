@@ -556,6 +556,7 @@ namespace ss
 				 (_ssDrawState.partsColorFunc != state.partsColorFunc)
 			  || (_ssDrawState.partsColorType != state.partsColorType)
 			  || ( _ssDrawState.partsColorUse != ispartColor)
+			  || (sprite->_partData.type == PARTTYPE_MASK)
 			   )
 			{
 				if (state.flags & PART_FLAG_PARTS_COLOR)
