@@ -40,15 +40,12 @@ bool AppDelegate::applicationDidFinishLaunching() {
     auto glview = director->getOpenGLView();
     if(!glview) {
 #if (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32) || (CC_TARGET_PLATFORM == CC_PLATFORM_MAC) || (CC_TARGET_PLATFORM == CC_PLATFORM_LINUX)
-        glview = GLViewImpl::createWithRect("MyGame311", cocos2d::Rect(0, 0, designResolutionSize.width, designResolutionSize.height));
+        glview = GLViewImpl::createWithRect("SS6Player for Cocos2d-x Sample", cocos2d::Rect(0, 0, designResolutionSize.width, designResolutionSize.height));
 #else
-        glview = GLViewImpl::create("MyGame311");
+        glview = GLViewImpl::create("SS6Player for Cocos2d-x Sample");
 #endif
         director->setOpenGLView(glview);
     }
-
-	//•½s“Š‰eÝ’è‚ð’Ç‰Á
-	director->setProjection(kCCDirectorProjection2D);
 	
 	// turn on display FPS
     director->setDisplayStats(true);

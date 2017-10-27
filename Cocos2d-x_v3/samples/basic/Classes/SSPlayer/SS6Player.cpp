@@ -359,7 +359,7 @@ void SSPlayerControl::initCustomShaderProgram( )
  */
 
 static const ss_u32 DATA_ID = 0x42505353;
-static const ss_u32 DATA_VERSION = 5;
+static const ss_u32 DATA_VERSION = 6;
 
 
 /**
@@ -1862,6 +1862,11 @@ void Player::setData(const std::string& dataKey)
 	}
 }
 
+std::string Player::getPlayDataName(void)
+{
+	return _currentdataKey;
+}
+
 void Player::releaseData()
 {
 	releaseAnime();
@@ -2148,6 +2153,7 @@ void Player::allocParts(int numParts, bool useCustomShaderProgram)
 		{
 			CustomSprite* sprite =  CustomSprite::create();
 			sprite->_ssplayer = NULL;
+			sprite->_parentPlayer = this;
 			sprite->_playercontrol = _playercontrol;
 
 			_parts.push_back(sprite);
@@ -2250,6 +2256,68 @@ void Player::setPartsParentage()
 				sprite->refEffect->reload();
 				sprite->refEffect->stop();
 				sprite->refEffect->setLoop(false);
+			}
+		}
+
+		if (partData->type == PARTTYPE_MESH)
+		{
+			//メッシュパーツ情報の取得
+			ToPointer ptr(_currentRs->data);
+			const AnimationData* animeData = _currentAnimeRef->animationData;
+
+			{
+				const ss_offset* meshsDataUV = static_cast<const ss_offset*>(ptr(animeData->meshsDataUV));
+				const ss_u16* meashsDataUVArray = static_cast<const ss_u16*>(ptr(meshsDataUV[partIndex]));
+				DataArrayReader reader(meashsDataUVArray);
+
+				int size = reader.readU32();
+				sprite->_meshVertexSize = size;	//メッシュの頂点サイズ
+
+												//メッシュ用バッファの作成
+				sprite->_mesh_uvs = new float[2 * size];						// UVバッファ
+//				sprite->_mesh_colors = new float[4 * size];						// カラーバッファ
+				sprite->_mesh_colors = new unsigned char[4 * size];						// カラーバッファ
+				sprite->_mesh_vertices = new float[3 * size];					// 座標バッファ
+
+				int i;
+				for (i = 0; i < size; i++)
+				{
+					float u = reader.readFloat();
+					float v = reader.readFloat();
+					SsVector2 uvs(u, v);
+					sprite->_meshVertexUV.push_back(uvs);	//メッシュのUV
+
+					sprite->_mesh_uvs[2 * i + 0] = u;						// UVバッファ
+					sprite->_mesh_uvs[2 * i + 1] = v;						// UVバッファ
+
+				}
+			}
+
+			{
+				const ss_offset* meshsDataIndices = static_cast<const ss_offset*>(ptr(animeData->meshsDataIndices));
+				const ss_u16* meshsDataIndicesArray = static_cast<const ss_u16*>(ptr(meshsDataIndices[partIndex]));
+				DataArrayReader reader(meshsDataIndicesArray);
+
+				int size = reader.readU32();
+				sprite->_meshTriangleSize = size;
+
+				//メッシュ用バッファの作成
+				sprite->_mesh_indices = new unsigned short[3 * size];					// 座標バッファ
+
+				int i;
+				for (i = 0; i < size; i++)
+				{
+					unsigned short po1 = (unsigned short)reader.readS32();
+					unsigned short po2 = (unsigned short)reader.readS32();
+					unsigned short po3 = (unsigned short)reader.readS32();
+					SsVector3 indices(po1, po2, po3);
+					sprite->_meshIndices.push_back(indices);	//メッシュのUV
+
+					sprite->_mesh_indices[3 * i + 0] = po1;						// UVバッファ
+					sprite->_mesh_indices[3 * i + 1] = po2;						// UVバッファ
+					sprite->_mesh_indices[3 * i + 2] = po3;						// UVバッファ
+
+				}
 			}
 		}
 	}
@@ -2714,6 +2782,7 @@ void Player::setFrame(int frameNo, float dt)
 
 		// optional parameters
 		int flags				= reader.readU32();
+		int flags2				= reader.readU32();
 		int cellIndex			= flags & PART_FLAG_CELL_INDEX ? reader.readS16() : init->cellIndex;
 		float x					= flags & PART_FLAG_POSITION_X ? reader.readFloat() : init->positionX;
 		float y					= flags & PART_FLAG_POSITION_Y ? reader.readFloat() : init->positionY;
@@ -2786,17 +2855,6 @@ void Player::setFrame(int frameNo, float dt)
 
 		_partIndex[index] = partIndex;
 
-		if ( _state.flipX == true )
-		{
-			//プレイヤーのXフリップ
-			flipX = !flipX;	//フラグ反転
-		}
-		if (_state.flipY == true)
-		{
-			//プレイヤーのYフリップ
-			flipY = !flipY;	//フラグ反転
-		}
-
 		//セルの原点設定を反映させる
 		CellRef* cellRef = cellIndex >= 0 ? _currentRs->cellCache->getReference(cellIndex) : nullptr;
 		if (cellRef)
@@ -2842,6 +2900,7 @@ void Player::setFrame(int frameNo, float dt)
 		//ステータス保存
 		state.name = static_cast<const char*>(ptr(partData->name));
 		state.flags = flags;
+		state.flags2 = flags2;
 		state.cellIndex = cellIndex;
 		state.x = x;
 		state.y = y;
@@ -3131,6 +3190,23 @@ void Player::setFrame(int frameNo, float dt)
 			quad.br.texCoords.v += uv_move_Y;
 		}
 
+		//メッシュ情報
+		if (flags2 & PART_FLAG_MESHDATA)
+		{
+			int i;
+			for (i = 0; i < sprite->_meshVertexSize; i++)
+			{
+				float mesh_x = reader.readFloat();
+				float mesh_y = reader.readFloat();
+				float mesh_z = reader.readFloat();
+				SsVector3 point(mesh_x, mesh_y, mesh_z);
+				state.meshVertexPoint.push_back(point);
+
+				sprite->_mesh_vertices[3 * i + 0] = mesh_x;					// 座標バッファ
+				sprite->_mesh_vertices[3 * i + 1] = mesh_y;					// 座標バッファ
+				sprite->_mesh_vertices[3 * i + 2] = mesh_z;					// 座標バッファ
+			}
+		}
 
 		float u_wide = 0;
 		float v_height = 0;
@@ -3307,6 +3383,9 @@ void Player::setFrame(int frameNo, float dt)
 
 			//インスタンスパラメータを設定
 			sprite->_ssplayer->setColor(_col_r, _col_g, _col_b);
+			sprite->_ssplayer->setPosition(_state.x, _state.y);
+			sprite->_ssplayer->setRotation(_state.rotationX, _state.rotationY, _state.rotationZ);
+			sprite->_ssplayer->setScale(_state.scaleX, _state.scaleY);
 
 			//インスタンス用SSPlayerに再生フレームを設定する
 			sprite->_ssplayer->setFrameNo(_time);
@@ -3339,6 +3418,39 @@ void Player::setFrame(int frameNo, float dt)
 	// 行列の更新
 	float mat[16];
 	float t[16];
+
+	//プレイヤーのマトリクスを計算する
+	{
+		IdentityMatrix(mat);
+
+		TranslationMatrix(t, _state.x, _state.y, 0.0f);
+		MultiplyMatrix(t, mat, mat);
+
+		Matrix4RotationX(t, SSRadianToDegree(_state.rotationX));
+		MultiplyMatrix(t, mat, mat);
+
+		Matrix4RotationY(t, SSRadianToDegree(_state.rotationY));
+		MultiplyMatrix(t, mat, mat);
+
+		Matrix4RotationZ(t, SSRadianToDegree(_state.rotationZ));
+		MultiplyMatrix(t, mat, mat);
+
+		float scale_x = _state.scaleX;
+		float scale_y = _state.scaleY;
+		if (_state.flipX == true)
+		{
+			scale_x = -scale_x;	//フラグ反転
+		}
+		if (_state.flipY == true)
+		{
+			scale_y = -scale_y;	//フラグ反転
+		}
+		ScaleMatrix(t, scale_x, scale_y, 1.0f);
+		MultiplyMatrix(t, mat, mat);
+
+		memcpy(_state.mat, mat, sizeof(float) * 16);	//表示にはローカルマトリクスを適用する
+	}
+
 	for (int partIndex = 0; partIndex < packData->numParts; partIndex++)
 	{
 		const PartData* partData = &parts[partIndex];
@@ -3370,7 +3482,7 @@ void Player::setFrame(int frameNo, float dt)
 						{
 							memcpy(mat, _parentMat, sizeof(float) * 16);
 						}
-
+/*
 						sprite->_state.x += _state.x;
 						sprite->_state.y += _state.y;
 						sprite->_state.rotationX += _state.rotationX;
@@ -3387,7 +3499,7 @@ void Player::setFrame(int frameNo, float dt)
 						{
 							sprite->_state.scaleY = -sprite->_state.scaleY;	//フラグ反転
 						}
-
+*/
 						sprite->_state.Calc_rotationX = sprite->_state.rotationX;
 						sprite->_state.Calc_rotationY = sprite->_state.rotationY;
 						sprite->_state.Calc_rotationZ = sprite->_state.rotationZ;
@@ -3834,6 +3946,11 @@ void Player::setPlayEndCallback(const PlayEndCallback& callback)
 	_playEndCallback = callback;
 }
 
+State Player::getState(void)
+{
+	return(_state);
+}
+
 /**
  * CustomSprite
  */
@@ -3846,13 +3963,23 @@ CustomSprite::CustomSprite():
 	,effectAttrInitialized(false)
 	,effectTimeTotal(0)
 	, _maskInfluence(true)
+	, _meshVertexSize(0)
+	, _mesh_uvs(nullptr)						// UVバッファ
+	, _mesh_colors(nullptr)						// カラーバッファ
+	, _mesh_vertices(nullptr)					// 座標バッファ
+	, _mesh_indices(nullptr)
 	, _playercontrol(nullptr)
 {
+	_meshVertexUV.clear();
 }
 
 CustomSprite::~CustomSprite()
 {
 	//エフェクトクラスがある場合は解放する
+	SS_SAFE_DELETE(_mesh_uvs);						// UVバッファ
+	SS_SAFE_DELETE(_mesh_colors);					// カラーバッファ
+	SS_SAFE_DELETE(_mesh_vertices);					// 座標バッファ
+	SS_SAFE_DELETE(_mesh_indices);					// 頂点順
 	SS_SAFE_DELETE(refEffect);
 	SS_SAFE_DELETE(_ssplayer);
 }

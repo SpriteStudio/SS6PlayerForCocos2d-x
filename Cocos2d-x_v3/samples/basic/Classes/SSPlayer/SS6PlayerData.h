@@ -20,6 +20,7 @@ typedef unsigned short	ss_u16;
 typedef unsigned int	ss_u32;
 typedef int				ss_s32;
 typedef int				ss_offset;
+typedef long long		ss_s64;
 
 struct EffectParticleInfiniteEmitEnabled
 {
@@ -209,6 +210,8 @@ struct AnimationData
 	ss_offset	frameData;			// const ss_s16*
 	ss_offset	userData;			// const ss_s16*
 	ss_offset	labelData;			// const ss_s16*
+	ss_offset	meshsDataUV;		// const ss_s16*
+	ss_offset	meshsDataIndices;	// const ss_s16*
 	ss_s16		startFrames;		// 開始フレーム
 	ss_s16		endFrames;			// 終了フレーム
 	ss_s16		totalFrames;		// 総フレーム
@@ -229,7 +232,8 @@ struct AnimationInitialData
 {
 	ss_s16		index;
 	ss_s16		dummy;
-	ss_u32		flags;
+	ss_u32		lowflag;
+	ss_u32		highflag;
 	ss_s16		priority;
 	ss_s16		cellIndex;
 	ss_s16		opacity;
@@ -285,17 +289,6 @@ struct PartData
 	ss_offset	refname;			// const char*　インスタンスとして配置されるアニメーション名
 	ss_offset	effectfilename;		// const char*　参照するエフェクトファイル名
 	ss_offset	colorLabel;			// const char*	カラーラベル
-	float		bonePositionX;		// ボーンの位置
-	float		bonePositionY;		// ボーンの位置
-	float		boneRotation;		// ボーンの角度
-	float		weightPositionX;	// ウェイトの位置
-	float		weightPositionY;	// ウェイトの位置
-	float		weightImpact;		// ウェイトの影響度
-	ss_s16		boneLength;			// ボーンの長さ
-	ss_s16		meshWeightType;		// ウェイトの種類
-	ss_s16		meshWeightStrong;	// ウェイトの影響度
-	ss_s16		IKDepth;			// IK深度
-	ss_s16		IKRotationArrow;	// 回転方向
 	ss_s16		maskInfluence;		// マスク対象
 };
 

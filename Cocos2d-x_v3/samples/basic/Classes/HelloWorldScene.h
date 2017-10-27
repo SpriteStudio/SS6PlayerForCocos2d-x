@@ -26,6 +26,10 @@ public:
 	//アニメーション終了コールバック
 	void playEndCallback(ss::Player* player);
 
+	//キーボードコールバック
+	void onKeyPressed(cocos2d::EventKeyboard::KeyCode keyCode, cocos2d::Event* event);
+	void onKeyReleased(cocos2d::EventKeyboard::KeyCode keyCode, cocos2d::Event* event);
+
 private:
 	// SSプレイヤー
 	ss::SSPlayerControl *ssplayer;
@@ -33,6 +37,10 @@ private:
 
 	//情報表示用ラベル
 	cocos2d::Label *label;
+
+	std::vector<std::string> animename;	//アニメーション名のリスト
+	int playindex;						//現在再生しているアニメのインデックス
+	int playerstate;					//再生状態
 
 };
 

@@ -52,7 +52,7 @@ bool HelloWorld::init()
                             origin.y + visibleSize.height - label->getContentSize().height));
 
     // add the label as a child to this layer
-    this->addChild(label, 1);
+    this->addChild(label, 10);
 
     // add "HelloWorld" splash screen"
     auto sprite = Sprite::create("HelloWorld.png");
@@ -76,11 +76,13 @@ bool HelloWorld::init()
 	//プレイヤーを使用する前の初期化処理
 	//この処理はアプリケーションの初期化で１度だけ行ってください。
 	ss::SSPlatformInit();
-	//リソースマネージャの作成
-	resman = ss::ResourceManager::getInstance();
 	//プレイヤーを使用する前の初期化処理ここまで
 
 
+	//リソースマネージャの作成
+	resman = ss::ResourceManager::getInstance();
+	
+	//SS6Player for Cocos2d-xではSSPlayerControlを作成し、getSSPInstance()を経由してプレイヤーを操作します
 	//プレイヤーの作成
 	ssplayer = ss::SSPlayerControl::create();
 	//アニメデータをリソースに追加
@@ -102,9 +104,19 @@ bool HelloWorld::init()
 	//アニメーション終了コールバックを設定
 	ssplayer->getSSPInstance()->setPlayEndCallback(CC_CALLBACK_1(HelloWorld::playEndCallback, this));
 
-
 	//プレイヤーをゲームシーンに追加
-	this->addChild(ssplayer, 10);
+	this->addChild(ssplayer, 1);
+
+	//ssbpに含まれているアニメーション名のリストを取得する
+	animename = resman->getAnimeName(ssplayer->getSSPInstance()->getPlayDataName());
+	playindex = 0;				//現在再生しているアニメのインデックス
+	playerstate = 0;
+
+	//キーボード入力コールバックの作成
+	auto listener = cocos2d::EventListenerKeyboard::create();
+	listener->onKeyPressed = CC_CALLBACK_2(HelloWorld::onKeyPressed, this);
+	listener->onKeyReleased = CC_CALLBACK_2(HelloWorld::onKeyReleased, this);
+	_eventDispatcher->addEventListenerWithSceneGraphPriority(listener, this);
 
 
 	//updeteの作成
@@ -176,4 +188,54 @@ void HelloWorld::playEndCallback(ss::Player* player)
 	//ループ回数分再生した後に呼び出される点に注意してください。
 	//無限ループで再生している場合はコールバックが発生しません。
 
+}
+
+// キーボード入力コールバック
+bool press = false;
+void HelloWorld::onKeyPressed(EventKeyboard::KeyCode keyCode, Event* event)
+{
+	log("Key with keycode %d pressed", keyCode);
+	if(press == false)
+	{ 
+		if (keyCode == cocos2d::EventKeyboard::KeyCode::KEY_LEFT_ARROW)
+		{
+			playindex--;
+			if (playindex < 0)
+			{
+				playindex = animename.size() - 1;
+			}
+			std::string name = animename.at(playindex);
+			ssplayer->getSSPInstance()->play(name);
+		}
+		else if (keyCode == cocos2d::EventKeyboard::KeyCode::KEY_RIGHT_ARROW)
+		{
+			playindex++;
+			if (playindex >= animename.size())
+			{
+				playindex = 0;
+			}
+			std::string name = animename.at(playindex);
+			ssplayer->getSSPInstance()->play(name);
+		}
+		if (keyCode == cocos2d::EventKeyboard::KeyCode::KEY_Z)
+		{
+			if (playerstate == 0)
+			{
+				ssplayer->getSSPInstance()->animePause();
+				playerstate = 1;
+			}
+			else
+			{
+				ssplayer->getSSPInstance()->animeResume();
+				playerstate = 0;
+			}
+		}
+	}
+	press = true;
+}
+
+void HelloWorld::onKeyReleased(EventKeyboard::KeyCode keyCode, Event* event)
+{
+	log("Key with keycode %d released", keyCode);
+	press = false;
 }
