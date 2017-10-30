@@ -147,7 +147,7 @@ uniform float u_rate;
 void main()
 {
 	vec4 pixel = texture2D(CC_Texture0, v_texCoord);
-    gl_FragColor.rgb = ( v_fragmentColor.rgb * u_rate ) + ( pixel.rgb * ( 1 - u_rate ) );
+    gl_FragColor.rgb = ( v_fragmentColor.rgb * u_rate ) + ( pixel.rgb * ( 1.0 - u_rate ) );
     gl_FragColor.a = pixel.a * v_fragmentColor.a;
 }
 )";
@@ -162,7 +162,7 @@ varying vec2 v_texCoord;
 void main()
 {
 	vec4 pixel = texture2D(CC_Texture0, v_texCoord);
-    gl_FragColor.rgb = ( v_fragmentColor.rgb * v_fragmentColor.a ) + ( pixel.rgb * ( 1 - v_fragmentColor.a ) );
+    gl_FragColor.rgb = ( v_fragmentColor.rgb * v_fragmentColor.a ) + ( pixel.rgb * ( 1.0 - v_fragmentColor.a ) );
     gl_FragColor.a = pixel.a;
 }
 )";
