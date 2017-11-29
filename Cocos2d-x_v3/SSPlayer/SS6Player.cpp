@@ -359,7 +359,7 @@ void SSPlayerControl::initCustomShaderProgram( )
  */
 
 static const ss_u32 DATA_ID = 0x42505353;
-static const ss_u32 DATA_VERSION = 6;
+static const ss_u32 DATA_VERSION = 7;
 
 
 /**
@@ -2270,6 +2270,8 @@ void Player::setPartsParentage()
 				const ss_u16* meashsDataUVArray = static_cast<const ss_u16*>(ptr(meshsDataUV[partIndex]));
 				DataArrayReader reader(meashsDataUVArray);
 
+				int isBind = reader.readU32();
+				sprite->_meshIsBind = (bool)isBind;	//バインドされたメッシュか？
 				int size = reader.readU32();
 				sprite->_meshVertexSize = size;	//メッシュの頂点サイズ
 
@@ -3963,6 +3965,7 @@ CustomSprite::CustomSprite():
 	,effectAttrInitialized(false)
 	,effectTimeTotal(0)
 	, _maskInfluence(true)
+	, _meshIsBind(false)
 	, _meshVertexSize(0)
 	, _mesh_uvs(nullptr)						// UVバッファ
 	, _mesh_colors(nullptr)						// カラーバッファ

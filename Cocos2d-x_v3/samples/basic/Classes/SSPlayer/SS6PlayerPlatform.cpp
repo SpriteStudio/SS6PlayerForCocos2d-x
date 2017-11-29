@@ -425,13 +425,25 @@ namespace ss
 			sprite->_mesh_colors[i * 4 + 2] = setcol[2];
 			sprite->_mesh_colors[i * 4 + 3] = setcol[3];
 
-			//プレイヤーのマトリクスをメッシュデータに与える
-			TranslationMatrix(t, sprite->_mesh_vertices[i * 3 + 0], sprite->_mesh_vertices[i * 3 + 1], sprite->_mesh_vertices[i * 3 + 2]);
-			MultiplyMatrix(t, mat, t);
-			sprite->_mesh_vertices[i * 3 + 0] = t[12];
-			sprite->_mesh_vertices[i * 3 + 1] = t[13];
-			sprite->_mesh_vertices[i * 3 + 2] = 0;
-
+			if (sprite->_meshIsBind == true)
+			{
+				//プレイヤーのマトリクスをメッシュデータに与える
+				TranslationMatrix(t, sprite->_mesh_vertices[i * 3 + 0], sprite->_mesh_vertices[i * 3 + 1], sprite->_mesh_vertices[i * 3 + 2]);
+				MultiplyMatrix(t, mat, t);
+				sprite->_mesh_vertices[i * 3 + 0] = t[12];
+				sprite->_mesh_vertices[i * 3 + 1] = t[13];
+				sprite->_mesh_vertices[i * 3 + 2] = 0;
+			}
+			else
+			{
+				//バインドされていないメッシュはパーツのマトリクスを与える
+				TranslationMatrix(t, sprite->_mesh_vertices[i * 3 + 0], sprite->_mesh_vertices[i * 3 + 1], sprite->_mesh_vertices[i * 3 + 2]);
+				MultiplyMatrix(t, state.mat, t);
+				MultiplyMatrix(t, mat, t);
+				sprite->_mesh_vertices[i * 3 + 0] = t[12];
+				sprite->_mesh_vertices[i * 3 + 1] = t[13];
+				sprite->_mesh_vertices[i * 3 + 2] = 0;
+			}
 		}
 
 		// vertex

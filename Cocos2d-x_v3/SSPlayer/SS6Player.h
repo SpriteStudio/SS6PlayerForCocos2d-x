@@ -1,5 +1,5 @@
 ﻿//-----------------------------------------------------------
-// SS6Player for Cocos2d-x v1.1.0
+// SS6Player for Cocos2d-x v1.2.0
 //
 // Copyright(C) Web Technology Corp.
 // http://www.webtech.co.jp/
@@ -10,7 +10,7 @@
 
 
 /************************************************************
-対応するssbpフォーマットはバージョン6です。
+対応するssbpフォーマットはバージョン7です。
 Ss6ConverterのフォーマットバージョンはSpriteStudio6-SDKを参照してください。
 https://github.com/SpriteStudio/SpriteStudio6-SDK
 
@@ -379,6 +379,7 @@ public:
 	float effectTimeTotal;
 
 	//メッシュ情報
+	bool					_meshIsBind;		//バインドされたメッシュか？
 	int						_meshVertexSize;	//メッシュの頂点サイズ
 	std::vector<SsVector2>	_meshVertexUV;		//メッシュのUV
 	std::vector<SsVector3>	_meshIndices;		//メッシュの頂点順
