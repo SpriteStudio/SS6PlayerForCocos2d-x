@@ -425,7 +425,7 @@ namespace ss
 			sprite->_mesh_colors[i * 4 + 2] = setcol[2];
 			sprite->_mesh_colors[i * 4 + 3] = setcol[3];
 
-			if (sprite->_meshIsBind == true)
+			if (( sprite->_meshIsBind == true ) && (sprite->_parentPlayer->_maskFuncFlag == true ) )
 			{
 				//プレイヤーのマトリクスをメッシュデータに与える
 				TranslationMatrix(t, sprite->_mesh_vertices[i * 3 + 0], sprite->_mesh_vertices[i * 3 + 1], sprite->_mesh_vertices[i * 3 + 2]);

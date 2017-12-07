@@ -3384,6 +3384,7 @@ void Player::setFrame(int frameNo, float dt)
 			}
 
 			//インスタンスパラメータを設定
+			sprite->_ssplayer->setAlpha(opacity);
 			sprite->_ssplayer->setColor(_col_r, _col_g, _col_b);
 			sprite->_ssplayer->setPosition(_state.x, _state.y);
 			sprite->_ssplayer->setRotation(_state.rotationX, _state.rotationY, _state.rotationZ);

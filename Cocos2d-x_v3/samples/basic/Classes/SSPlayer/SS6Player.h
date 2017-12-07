@@ -1,5 +1,5 @@
 ﻿//-----------------------------------------------------------
-// SS6Player for Cocos2d-x v1.2.0
+// SS6Player for Cocos2d-x v1.2.1
 //
 // Copyright(C) Web Technology Corp.
 // http://www.webtech.co.jp/
@@ -1455,6 +1455,7 @@ public:
 	State getState(void);
 
 	SSPlayerControl*	_playercontrol;
+	bool				_maskFuncFlag;					//マスク機能を有効にするか？（インスタンスのソースアニメはマスクが無効になる）
 
 protected:
 	void allocParts(int numParts, bool useCustomShaderProgram);
@@ -1511,7 +1512,6 @@ protected:
 
 	float				_parentMat[16];					//プレイヤーが持つ継承されたマトリクス
 	bool				_parentMatUse;					//プレイヤーが持つ継承されたマトリクスがあるか？
-	bool				_maskFuncFlag;					//マスク機能を有効にするか？（インスタンスのソースアニメはマスクが無効になる）
 	bool				_maskParentSetting;				//親パーツのマスク対象（インスタンスのみ使用する）
 
 	std::vector<CustomSprite *> _maskIndexList;			//マスク対象となるパーツ
