@@ -3384,11 +3384,10 @@ void Player::setFrame(int frameNo, float dt)
 			}
 
 			//インスタンスパラメータを設定
-			sprite->_ssplayer->setAlpha(opacity);
 			sprite->_ssplayer->setColor(_col_r, _col_g, _col_b);
-			sprite->_ssplayer->setPosition(_state.x, _state.y);
-			sprite->_ssplayer->setRotation(_state.rotationX, _state.rotationY, _state.rotationZ);
-			sprite->_ssplayer->setScale(_state.scaleX, _state.scaleY);
+//			sprite->_ssplayer->setPosition(_state.x, _state.y);
+//			sprite->_ssplayer->setRotation(_state.rotationX, _state.rotationY, _state.rotationZ);
+//			sprite->_ssplayer->setScale(_state.scaleX, _state.scaleY);
 
 			//インスタンス用SSPlayerに再生フレームを設定する
 			sprite->_ssplayer->setFrameNo(_time);
@@ -3423,6 +3422,12 @@ void Player::setFrame(int frameNo, float dt)
 	float t[16];
 
 	//プレイヤーのマトリクスを計算する
+	//rootパーツはプレイヤーからステータスを引き継ぐ
+	if (_parentMatUse == true)					//プレイヤーが持つ継承されたマトリクスがあるか？
+	{
+		memcpy(_state.mat, _parentMat, sizeof(float) * 16);
+	}
+	else
 	{
 		IdentityMatrix(mat);
 
@@ -3451,7 +3456,7 @@ void Player::setFrame(int frameNo, float dt)
 		ScaleMatrix(t, scale_x, scale_y, 1.0f);
 		MultiplyMatrix(t, mat, mat);
 
-		memcpy(_state.mat, mat, sizeof(float) * 16);	//表示にはローカルマトリクスを適用する
+		memcpy(_state.mat, mat, sizeof(float) * 16);	//プレイヤーのマトリクスを作成する
 	}
 
 	for (int partIndex = 0; partIndex < packData->numParts; partIndex++)
@@ -3480,11 +3485,6 @@ void Player::setFrame(int frameNo, float dt)
 					else
 					{
 						IdentityMatrix(mat);
-						//rootパーツはプレイヤーからステータスを引き継ぐ
-						if (_parentMatUse == true)					//プレイヤーが持つ継承されたマトリクスがあるか？
-						{
-							memcpy(mat, _parentMat, sizeof(float) * 16);
-						}
 /*
 						sprite->_state.x += _state.x;
 						sprite->_state.y += _state.y;
@@ -3572,15 +3572,16 @@ void Player::setFrame(int frameNo, float dt)
 					//インスタンスパーツの親を設定
 					if (sprite->_ssplayer)
 					{
-						sprite->_ssplayer->setParentMatrix( sprite->_state.mat, true );	//プレイヤーに対してマトリクスを設定する
+						IdentityMatrix(t);
+						MultiplyMatrix(sprite->_state.mat, _state.mat, t);
+
+						sprite->_ssplayer->setParentMatrix( t, true );	//プレイヤーに対してマトリクスを設定する
 
 						float alpha = sprite->_state.Calc_opacity;
 						if (sprite->_state.flags & PART_FLAG_LOCALOPACITY)
 						{
 							alpha = sprite->_state.localopacity;	//ローカル不透明度対応
 						}
-
-
 						sprite->_ssplayer->setAlpha(alpha);
 					}
 
