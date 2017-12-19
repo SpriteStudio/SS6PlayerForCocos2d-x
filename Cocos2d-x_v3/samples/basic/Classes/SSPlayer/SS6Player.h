@@ -1,5 +1,5 @@
 ﻿//-----------------------------------------------------------
-// SS6Player for Cocos2d-x v1.2.1
+// SS6Player for Cocos2d-x v1.2.2
 //
 // Copyright(C) Web Technology Corp.
 // http://www.webtech.co.jp/
@@ -48,7 +48,12 @@ https://github.com/SpriteStudio/SpriteStudio6-SDK
 
   //表示位置を設定
   Size size = cocos2d::Director::getInstance()->getWinSize();
-  ssplayer->getSSPInstance()->setPosition(size.width / 2, size.height / 2);
+  ssplayer->setPosition(size.width / 2, size.height / 2);	//位置の設定
+  ssplayer->setScale(1.0f, 1.0f);							//スケール設定
+  ssplayer->setRotation(0);									//角度設定
+  ssplayer->setOpacity(255);								//透明度設定
+  ssplayer->getSSPInstance()->setColor(255, 255, 255);		//カラー値設定
+  ssplayer->getSSPInstance()->setFlip(false, false);		//反転設定
 
   //プレイヤーをゲームシーンに追加
   this->addChild(ssplayer, 10);

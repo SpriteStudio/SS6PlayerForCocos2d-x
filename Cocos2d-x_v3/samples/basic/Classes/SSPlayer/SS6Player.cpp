@@ -77,6 +77,8 @@ bool SSPlayerControl::init()
 }
 void SSPlayerControl::update(float dt)
 {
+	_ssp->setParentMatrix(_transform.m, true);
+	_ssp->setAlpha(_displayedOpacity);
 	_ssp->update(dt);
 }
 
