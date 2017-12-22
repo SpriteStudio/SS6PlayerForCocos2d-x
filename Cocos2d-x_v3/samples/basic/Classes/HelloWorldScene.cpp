@@ -96,7 +96,12 @@ bool HelloWorld::init()
 
 	//表示位置を設定
 	Size size = cocos2d::Director::getInstance()->getWinSize();
-	ssplayer->getSSPInstance()->setPosition(size.width / 2, size.height / 2);
+	ssplayer->setPosition(size.width / 2, size.height / 2);
+	ssplayer->setScale(1.0f, 1.0f);
+	ssplayer->setRotation(0);
+	ssplayer->setOpacity(255);
+	ssplayer->getSSPInstance()->setColor(255, 255, 255);
+	ssplayer->getSSPInstance()->setFlip(false, false);
 
 	//ユーザーデータコールバックを設定
 	ssplayer->getSSPInstance()->setUserDataCallback(CC_CALLBACK_2(HelloWorld::userDataCallback, this));
