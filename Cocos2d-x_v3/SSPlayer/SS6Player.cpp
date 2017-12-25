@@ -75,9 +75,12 @@ bool SSPlayerControl::init()
 	}
 	return true;
 }
+
 void SSPlayerControl::update(float dt)
 {
-	_ssp->setParentMatrix(_transform.m, true);
+	cocos2d::Mat4 mat = getNodeToWorldTransform();
+
+	_ssp->setParentMatrix(mat.m, true);
 	_ssp->setAlpha(_displayedOpacity);
 	_ssp->update(dt);
 }
