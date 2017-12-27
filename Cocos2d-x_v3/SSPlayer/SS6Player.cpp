@@ -2858,6 +2858,19 @@ void Player::setFrame(int frameNo, float dt)
 		{
 			//ユーザーがセルを上書きした
 			cellIndex = _cellChange[index];
+			CellRef* cellRef = cellIndex >= 0 ? _currentRs->cellCache->getReference(cellIndex) : nullptr;
+			if (cellRef)
+			{
+				//サイズアトリビュートがない場合は差し替えたセルのサイズを設定しておく
+				if ((flags & PART_FLAG_SIZE_X) == 0)
+				{
+					size_X = cellRef->rect.size.width;
+				}
+				if ((flags & PART_FLAG_SIZE_Y) == 0)
+				{
+					size_Y = cellRef->rect.size.height;
+				}
+			}
 		}
 
 		_partIndex[index] = partIndex;
