@@ -3194,21 +3194,6 @@ void Player::setFrame(int frameNo, float dt)
 				}
 			}
 		}
-		//uvスクロール
-		if (flags & PART_FLAG_U_MOVE)
-		{
-			quad.tl.texCoords.u += uv_move_X;
-			quad.tr.texCoords.u += uv_move_X;
-			quad.bl.texCoords.u += uv_move_X;
-			quad.br.texCoords.u += uv_move_X;
-		}
-		if (flags & PART_FLAG_V_MOVE)
-		{
-			quad.tl.texCoords.v += uv_move_Y;
-			quad.tr.texCoords.v += uv_move_Y;
-			quad.bl.texCoords.v += uv_move_Y;
-			quad.br.texCoords.v += uv_move_Y;
-		}
 
 		//メッシュ情報
 		if (flags2 & PART_FLAG_MESHDATA)
@@ -3228,52 +3213,74 @@ void Player::setFrame(int frameNo, float dt)
 			}
 		}
 
-		float u_wide = 0;
-		float v_height = 0;
-		float u_center = 0;
-		float v_center = 0;
-		float u_code = 1;
-		float v_code = 1;
+		//UVアトリビュート処理
+		if (
+			   (flags & PART_FLAG_U_SCALE) || (flags & PART_FLAG_FLIP_H)
+			|| (flags & PART_FLAG_V_SCALE) || (flags & PART_FLAG_FLIP_V)
+			|| (flags & PART_FLAG_U_MOVE) || (flags & PART_FLAG_V_MOVE)
+			|| (flags & PART_FLAG_UV_ROTATION)
+			)
+		{
+			//アトリビュートからマトリクスを作成してUV座標を移動させる
+			float u_code = 1;
+			float v_code = 1;
+			if (flags & PART_FLAG_FLIP_H)
+			{
+				//UV左右反転を行う場合は符号を逆にする
+				u_code = -1;
+			}
+			if (flags & PART_FLAG_FLIP_V)
+			{
+				//UV上下反転を行う場合はテクスチャUVを逆にする
+				v_code = -1;
+			}
 
-		//UVを作成、反転の結果UVが反転する
-		u_wide = (quad.tr.texCoords.u - quad.tl.texCoords.u) / 2.0f;
-		u_center = quad.tl.texCoords.u + u_wide;
-		if (flags & PART_FLAG_FLIP_H)
-		{
-			//左右反転を行う場合は符号を逆にする
-			u_code = -1;
-		}
-		v_height = (quad.bl.texCoords.v - quad.tl.texCoords.v) / 2.0f;
-		v_center = quad.tl.texCoords.v + v_height;
-		if (flags & PART_FLAG_FLIP_V)
-		{
-			//上下反転を行う場合はテクスチャUVを逆にする
-			v_code = -1;
-		}
-		//UV回転
-		if (flags & PART_FLAG_UV_ROTATION)
-		{
-			//頂点位置を回転させる
-			get_uv_rotation(&quad.tl.texCoords.u, &quad.tl.texCoords.v, u_center, v_center, uv_rotation);
-			get_uv_rotation(&quad.tr.texCoords.u, &quad.tr.texCoords.v, u_center, v_center, uv_rotation);
-			get_uv_rotation(&quad.bl.texCoords.u, &quad.bl.texCoords.v, u_center, v_center, uv_rotation);
-			get_uv_rotation(&quad.br.texCoords.u, &quad.br.texCoords.v, u_center, v_center, uv_rotation);
-		}
+			float uvw = quad.br.texCoords.u + quad.tl.texCoords.u;
+			float uvh = quad.br.texCoords.v + quad.tl.texCoords.v;
+			uvw /= 2.0f;
+			uvh /= 2.0f;
 
-		//UVスケール || 反転
-		if ((flags & PART_FLAG_U_SCALE) || (flags & PART_FLAG_FLIP_H))
-		{
-			quad.tl.texCoords.u = u_center - (u_wide * uv_scale_X * u_code);
-			quad.tr.texCoords.u = u_center + (u_wide * uv_scale_X * u_code);
-			quad.bl.texCoords.u = u_center - (u_wide * uv_scale_X * u_code);
-			quad.br.texCoords.u = u_center + (u_wide * uv_scale_X * u_code);
-		}
-		if ((flags & PART_FLAG_V_SCALE) || (flags & PART_FLAG_FLIP_V))
-		{
-			quad.tl.texCoords.v = v_center - (v_height * uv_scale_Y * v_code);
-			quad.tr.texCoords.v = v_center - (v_height * uv_scale_Y * v_code);
-			quad.bl.texCoords.v = v_center + (v_height * uv_scale_Y * v_code);
-			quad.br.texCoords.v = v_center + (v_height * uv_scale_Y * v_code);
+			SsVector2 uv_trans;
+			uv_trans.x = uv_move_X;
+			uv_trans.y = uv_move_Y;
+
+			float mat[16];
+			float t[16];
+			IdentityMatrix(mat);
+			TranslationMatrix(t, uvw + uv_trans.x, uvh + uv_trans.y, 0.0f);
+			MultiplyMatrix(t, mat, mat);
+
+			Matrix4RotationZ(t, SSRadianToDegree(uv_rotation));
+			MultiplyMatrix(t, mat, mat);
+
+			ScaleMatrix(t, uv_scale_X * u_code, uv_scale_Y * v_code, 1.0f);
+			MultiplyMatrix(t, mat, mat);
+
+			TranslationMatrix(t, -uvw, -uvh, 0.0f);
+			MultiplyMatrix(t, mat, mat);
+
+			//UV座標をマトリクスで変形させる
+			TranslationMatrix(t, quad.tl.texCoords.u, quad.tl.texCoords.v, 0.0f);
+			MultiplyMatrix(t, mat, t);			//プレイヤーのTRS	
+			quad.tl.texCoords.u = t[12];
+			quad.tl.texCoords.v = t[13];
+
+			TranslationMatrix(t, quad.tr.texCoords.u, quad.tr.texCoords.v, 0.0f);
+			MultiplyMatrix(t, mat, t);
+			quad.tr.texCoords.u = t[12];
+			quad.tr.texCoords.v = t[13];
+
+			TranslationMatrix(t, quad.bl.texCoords.u, quad.bl.texCoords.v, 0.0f);
+			MultiplyMatrix(t, mat, t);
+			quad.bl.texCoords.u = t[12];
+			quad.bl.texCoords.v = t[13];
+
+			TranslationMatrix(t, quad.br.texCoords.u, quad.br.texCoords.v, 0.0f);
+			MultiplyMatrix(t, mat, t);
+			quad.br.texCoords.u = t[12];
+			quad.br.texCoords.v = t[13];
+
+
 		}
 		state.quad = quad;
 
