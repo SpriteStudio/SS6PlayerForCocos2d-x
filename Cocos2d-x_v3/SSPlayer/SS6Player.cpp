@@ -364,7 +364,7 @@ void SSPlayerControl::initCustomShaderProgram( )
  */
 
 static const ss_u32 DATA_ID = 0x42505353;
-static const ss_u32 DATA_VERSION = 7;
+static const ss_u32 DATA_VERSION = 8;
 
 
 /**
@@ -3091,23 +3091,23 @@ void Player::setFrame(int frameNo, float dt)
 			int vt_flags = reader.readU16();
 			if (vt_flags & VERTEX_FLAG_LT)
 			{
-				quad.tl.vertices.x += reader.readS16();
-				quad.tl.vertices.y += reader.readS16();
+				quad.tl.vertices.x += reader.readFloat();
+				quad.tl.vertices.y += reader.readFloat();
 			}
 			if (vt_flags & VERTEX_FLAG_RT)
 			{
-				quad.tr.vertices.x += reader.readS16();
-				quad.tr.vertices.y += reader.readS16();
+				quad.tr.vertices.x += reader.readFloat();
+				quad.tr.vertices.y += reader.readFloat();
 			}
 			if (vt_flags & VERTEX_FLAG_LB)
 			{
-				quad.bl.vertices.x += reader.readS16();
-				quad.bl.vertices.y += reader.readS16();
+				quad.bl.vertices.x += reader.readFloat();
+				quad.bl.vertices.y += reader.readFloat();
 			}
 			if (vt_flags & VERTEX_FLAG_RB)
 			{
-				quad.br.vertices.x += reader.readS16();
-				quad.br.vertices.y += reader.readS16();
+				quad.br.vertices.x += reader.readFloat();
+				quad.br.vertices.y += reader.readFloat();
 			}
 		}
 		
