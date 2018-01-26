@@ -1,5 +1,5 @@
 ﻿/**
-*  SS5PlayerData.h
+*  SS6PlayerData.h
 */
 
 #ifndef SS6PlayerData_h

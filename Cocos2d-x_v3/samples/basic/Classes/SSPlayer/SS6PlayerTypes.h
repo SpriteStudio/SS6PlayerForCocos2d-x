@@ -1,9 +1,9 @@
 ﻿/**
-*  SS5PlayerTypes.h
+*  SS6PlayerTypes.h
 */
 
-#ifndef SS5PlayerTypes_h
-#define SS5PlayerTypes_h
+#ifndef SS6PlayerTypes_h
+#define SS6PlayerTypes_h
 
 #include <float.h>
 #include <math.h>

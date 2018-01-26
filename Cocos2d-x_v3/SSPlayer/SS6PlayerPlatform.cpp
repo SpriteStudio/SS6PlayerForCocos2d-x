@@ -557,7 +557,10 @@ namespace ss
 			glEnable(gl_target);
 #endif
 			//テクスチャのバインド
-			glBindTexture(gl_target, texture[tex_index]->getName());
+			//cocos内部のbindTexture2Dを使用しないとならない。
+			//直接バインドを変えると、カレントのテクスチャが更新されず、他のspriteの描画自にテクスチャのバインドがされない
+//			glBindTexture(gl_target, texture[tex_index]->getName());
+			cocos2d::GL::bindTexture2D(texture[tex_index]->getName());
 		}
 
 		//描画モード
@@ -568,13 +571,16 @@ namespace ss
 			switch (state.blendfunc)
 			{
 			case BLEND_MIX:		///< 0 ブレンド（ミックス）
-				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+//				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+				cocos2d::GL::blendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 				break;
 			case BLEND_MUL:		///< 1 乗算
-				glBlendFunc(GL_ZERO, GL_SRC_COLOR);
+//				glBlendFunc(GL_ZERO, GL_SRC_COLOR);
+				cocos2d::GL::blendFunc(GL_ZERO, GL_SRC_COLOR);
 				break;
 			case BLEND_ADD:		///< 2 加算
-				glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+//				glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+				cocos2d::GL::blendFunc(GL_SRC_ALPHA, GL_ONE);
 				break;
 			case BLEND_SUB:		///< 3 減算
 				glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
@@ -585,18 +591,21 @@ namespace ss
 #endif
 				break;
 			case BLEND_MULALPHA:	///< 4 α乗算
-				glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
+//				glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
+				cocos2d::GL::blendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
 				break;
 			case BLEND_SCREEN:		///< 5 スクリーン
-				glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ONE);
+//				glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ONE);
+				cocos2d::GL::blendFunc(GL_ONE_MINUS_DST_COLOR, GL_ONE);
 				break;
 			case BLEND_EXCLUSION:	///< 6 除外
-				glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ONE_MINUS_SRC_COLOR);
+//				glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ONE_MINUS_SRC_COLOR);
+				cocos2d::GL::blendFunc(GL_ONE_MINUS_DST_COLOR, GL_ONE_MINUS_SRC_COLOR);
 				break;
 			case BLEND_INVERT:		///< 7 反転
-				glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ZERO);
+//				glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ZERO);
+				cocos2d::GL::blendFunc(GL_ONE_MINUS_DST_COLOR, GL_ZERO);
 				break;
-
 			}
 		}
 

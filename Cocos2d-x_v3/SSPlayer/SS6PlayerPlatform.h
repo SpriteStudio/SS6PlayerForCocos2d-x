@@ -1,9 +1,9 @@
 ﻿/**
-*  SS5PlayerPlatform.h
+*  SS6PlayerPlatform.h
 */
 
-#ifndef SS5PlayerPlatform_h
-#define SS5PlayerPlatform_h
+#ifndef SS6PlayerPlatform_h
+#define SS6PlayerPlatform_h
 #include "SS6Player.h"
 
 namespace ss

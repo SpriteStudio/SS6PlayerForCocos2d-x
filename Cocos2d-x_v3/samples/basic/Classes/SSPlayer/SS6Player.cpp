@@ -1,5 +1,5 @@
 ﻿// 
-//  SS5Player.cpp
+//  SS6Player.cpp
 //
 #include "SS6Player.h"
 #include "SS6PlayerData.h"
