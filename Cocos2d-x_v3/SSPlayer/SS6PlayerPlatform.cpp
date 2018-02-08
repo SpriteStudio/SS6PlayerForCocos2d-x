@@ -260,7 +260,7 @@ namespace ss
 		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 		glEnable(GL_TEXTURE_2D);
 #endif
-		glBindTexture(GL_TEXTURE_2D, 0);
+//		glBindTexture(GL_TEXTURE_2D, 0);	//0にするとパーツの描画がない場合に他のspritenoのテクスチャを無効にしてしまう
 
 		glEnable(GL_BLEND);
 		glDisable(GL_DEPTH_TEST);
@@ -303,6 +303,7 @@ namespace ss
 	{
 		const auto& matrixP = cocos2d::Director::getInstance()->getMatrix(cocos2d::MATRIX_STACK_TYPE::MATRIX_STACK_PROJECTION);
 		cocos2d::Mat4 matrixMVP = matrixP;
+		cocos2d::GLProgram *glprogram;
 
 		//パーツカラーの反映
 		switch (blendType)
@@ -313,6 +314,8 @@ namespace ss
 				//シェーダーを適用する
 				pc->setGLProgram(SSPlayerControl::_partColorMIXONEShaderProgram);
 				pc->getShaderProgram()->use();
+				glprogram = pc->getGLProgram();	//
+				glprogram->setUniformsForBuiltins();
 				//マトリクスを設定
 				glUniformMatrix4fv(SSPlayerControl::_MIXONE_uniform_map[(int)WVP], 1, 0, (float *)&matrixMVP.m);
 				// テクスチャサンプラ情報をシェーダーに送る  
@@ -324,6 +327,8 @@ namespace ss
 				//シェーダーを適用する
 				pc->setGLProgram(SSPlayerControl::_partColorMIXVERTShaderProgram);
 				pc->getShaderProgram()->use();
+				glprogram = pc->getGLProgram();	//
+				glprogram->setUniformsForBuiltins();
 				//マトリクスを設定
 				glUniformMatrix4fv(SSPlayerControl::_MIXVERT_uniform_map[WVP], 1, 0, (float *)&matrixMVP.m);
 				// テクスチャサンプラ情報をシェーダーに送る  
@@ -334,6 +339,8 @@ namespace ss
 			//シェーダーを適用する
 			pc->setGLProgram(SSPlayerControl::_partColorMULShaderProgram);
 			pc->getShaderProgram()->use();
+			glprogram = pc->getGLProgram();	//
+			glprogram->setUniformsForBuiltins();
 			//マトリクスを設定
 			glUniformMatrix4fv(SSPlayerControl::_MUL_uniform_map[WVP], 1, 0, (float *)&matrixMVP.m);
 			// テクスチャサンプラ情報をシェーダーに送る  
@@ -343,6 +350,8 @@ namespace ss
 			//シェーダーを適用する
 			pc->setGLProgram(SSPlayerControl::_partColorADDShaderProgram);
 			pc->getShaderProgram()->use();
+			glprogram = pc->getGLProgram();	//
+			glprogram->setUniformsForBuiltins();
 			//マトリクスを設定
 			glUniformMatrix4fv(SSPlayerControl::_ADD_uniform_map[WVP], 1, 0, (float *)&matrixMVP.m);
 			// テクスチャサンプラ情報をシェーダーに送る  
@@ -352,6 +361,8 @@ namespace ss
 			//シェーダーを適用する
 			pc->setGLProgram(SSPlayerControl::_partColorSUBShaderProgram);
 			pc->getShaderProgram()->use();
+			glprogram = pc->getGLProgram();	//
+			glprogram->setUniformsForBuiltins();
 			//マトリクスを設定
 			glUniformMatrix4fv(SSPlayerControl::_SUB_uniform_map[WVP], 1, 0, (float *)&matrixMVP.m);
 			// テクスチャサンプラ情報をシェーダーに送る  
@@ -406,6 +417,8 @@ namespace ss
 				//パーツカラーが設定されていない場合はディフォルトシェーダーを使用する
 				sprite->_playercontrol->setGLProgram(sprite->_playercontrol->_defaultShaderProgram);
 				sprite->_playercontrol->getShaderProgram()->use();
+				auto glprogram = sprite->_playercontrol->getGLProgram();	//
+				glprogram->setUniformsForBuiltins();
 			}
 		}
 
@@ -638,6 +651,8 @@ namespace ss
 				//シェーダーを適用する
 				sprite->_playercontrol->setGLProgram(SSPlayerControl::_MASKShaderProgram);
 				sprite->_playercontrol->getShaderProgram()->use();
+				auto glprogram = sprite->_playercontrol->getGLProgram();	//
+				glprogram->setUniformsForBuiltins();
 				//マトリクスを設定
 				glUniformMatrix4fv(SSPlayerControl::_MIXONE_uniform_map[(int)WVP], 1, 0, (float *)&matrixMVP.m);
 				// テクスチャサンプラ情報をシェーダーに送る  
@@ -664,6 +679,8 @@ namespace ss
 					//パーツカラーが設定されていない場合はディフォルトシェーダーを使用する
 					sprite->_playercontrol->setGLProgram(sprite->_playercontrol->_defaultShaderProgram);
 					sprite->_playercontrol->getShaderProgram()->use();
+					auto glprogram = sprite->_playercontrol->getGLProgram();	//
+					glprogram->setUniformsForBuiltins();
 				}
 			}
 		}

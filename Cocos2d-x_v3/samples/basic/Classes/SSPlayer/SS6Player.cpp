@@ -228,7 +228,6 @@ void SSPlayerControl::initCustomShaderProgram( )
 	{
 		GLProgram* p = nullptr;
 		p = new GLProgram();
-		p->autorelease();
 
 		p->initWithByteArrays(ssPositionTextureColor_vartex, ssMASKPositionTextureColor_frag);
 		//	this->setShaderProgram(p);
@@ -661,7 +660,7 @@ protected:
 	//キャッシュの削除
 	void releseReference(void)
 	{
-		for (int i = 0; i < _refs.size(); i++)
+		for (int i = 0; i < (int)_refs.size(); i++)
 		{
 			CellRef* ref = _refs.at(i);
 			if (ref->texture.handle != -1 )
@@ -1164,10 +1163,10 @@ protected:
 
 			if (effectmodel)
 			{
-				for (int nodeindex = 0; nodeindex < effectmodel->nodeList.size(); nodeindex++)
+				for (int nodeindex = 0; nodeindex < (int)effectmodel->nodeList.size(); nodeindex++)
 				{
 					SsEffectNode* node = effectmodel->nodeList.at(nodeindex);
-					for (int behaviorindex = 0; behaviorindex < node->behavior.plist.size(); behaviorindex++)
+					for (int behaviorindex = 0; behaviorindex < (int)node->behavior.plist.size(); behaviorindex++)
 					{
 						SsEffectElementBase* eb = node->behavior.plist.at(behaviorindex);
 						delete eb;
@@ -2140,7 +2139,7 @@ void Player::updateFrame(float dt)
 
 void Player::allocParts(int numParts, bool useCustomShaderProgram)
 {
-	for (int i = 0; i < _parts.size(); i++)
+	for (int i = 0; i < (int)_parts.size(); i++)
 	{
 		CustomSprite* sprite = _parts.at(i);
 		if (sprite)
@@ -2546,7 +2545,6 @@ int Player::getLabelToFrame(char* findLabelName)
 //プライオリティでソートされた後、上に配置された順にソートされて決定されます。
 void Player::setPartVisible(std::string partsname, bool flg)
 {
-	bool rc = false;
 	if (_currentAnimeRef)
 	{
 		ToPointer ptr(_currentRs->data);
@@ -2572,7 +2570,6 @@ void Player::setPartVisible(std::string partsname, bool flg)
 //パーツに割り当たるセルを変更します
 void Player::setPartCell(std::string partsname, std::string sscename, std::string cellname)
 {
-	bool rc = false;
 	if (_currentAnimeRef)
 	{
 		ToPointer ptr(_currentRs->data);
@@ -2584,7 +2581,6 @@ void Player::setPartCell(std::string partsname, std::string sscename, std::strin
 			const Cell* cells = static_cast<const Cell*>(ptr(_currentRs->data->cells));
 
 			//名前からインデックスの取得
-			int cellindex = -1;
 			for (int i = 0; i < _currentRs->data->numCells; i++)
 			{
 				const Cell* cell = &cells[i];
@@ -2719,7 +2715,7 @@ void Player::setEndFrameToLabelName(char *findLabelName)
 CustomSprite* Player::getSpriteData(int partIndex)
 {
 	CustomSprite* sprite = NULL;
-	if (_parts.size() < partIndex)
+	if ((int)_parts.size() < partIndex)
 	{
 	}
 	else
@@ -2974,8 +2970,6 @@ void Player::setFrame(int frameNo, float dt)
 		//反転はUVにも反映させておくので使いやすい方で反転してください。
 		sprite->setFlippedX(flipX);
 		sprite->setFlippedY(flipY);
-
-		bool setBlendEnabled = true;
 
 		if (cellRef)
 		{
