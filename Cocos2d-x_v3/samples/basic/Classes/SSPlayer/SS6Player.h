@@ -1,5 +1,5 @@
 ﻿//-----------------------------------------------------------
-// SS6Player for Cocos2d-x v1.3.1
+// SS6Player for Cocos2d-x v1.3.2
 //
 // Copyright(C) Web Technology Corp.
 // http://www.webtech.co.jp/
@@ -182,6 +182,8 @@ public:
 	virtual bool init();
 	virtual void update(float dt);
 	virtual void draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transform, uint32_t flags);
+	virtual void setPosition(const cocos2d::Vec2& position);
+	virtual void setPosition(float x, float y);
 
 	void onDraw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transform, uint32_t flags);
 	void initCustomShaderProgram( );

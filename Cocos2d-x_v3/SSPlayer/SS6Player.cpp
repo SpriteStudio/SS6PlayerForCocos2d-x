@@ -97,6 +97,20 @@ void SSPlayerControl::draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &tra
 	_customCommand.func = CC_CALLBACK_0(SSPlayerControl::onDraw, this, renderer, transform, flags);
 	renderer->addCommand(&_customCommand);
 }
+
+/// ポジションセットをオ－バーライドしてプレイヤーの位置を更新する
+void SSPlayerControl::setPosition(const cocos2d::Vec2& position)
+{
+	setPosition(position.x, position.y);
+}
+void SSPlayerControl::setPosition(float x, float y)
+{
+	Sprite::setPosition(x, y);
+
+	cocos2d::Mat4 mat = getNodeToWorldTransform();
+	_ssp->setParentMatrix(mat.m, true);
+}
+
 //sprite のオーバーライドここまで
 //sprite のシェーダー
 static const GLchar * ssPositionTextureColor_vartex = R"(
