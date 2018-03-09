@@ -1661,9 +1661,9 @@ bool ResourceManager::isDataKeyExists(const std::string& dataKey) {
 static const std::string s_nullString;
 
 Player::Player(void)
-	: _resman(NULL)
-	, _currentRs(NULL)
-	, _currentAnimeRef(NULL)
+	: _resman(nullptr)
+	, _currentRs(nullptr)
+	, _currentAnimeRef(nullptr)
 	, _frameSkipEnabled(true)
 	, _playingFrame(0.0f)
 	, _step(1.0f)
@@ -1676,7 +1676,7 @@ Player::Player(void)
 	, _col_g(255)
 	, _col_b(255)
 	, _instanceOverWrite(false)
-	, _motionBlendPlayer(NULL)
+	, _motionBlendPlayer(nullptr)
 	, _blendTime(0.0f)
 	, _blendTimeMax(0.0f)
 	,_startFrameOverWrite(-1)	//開始フレームの上書き設定
@@ -1951,7 +1951,7 @@ void Player::motionBlendPlay(const std::string& animeName, int loop, int startFr
 		//現在のアニメーションをブレンド用プレイヤーで再生
 		if (_motionBlendPlayer == NULL)
 		{
-			_motionBlendPlayer = ss::Player::create();
+			_motionBlendPlayer = ss::Player::create(_resman);
 		}
 		int loopnum = _loop;
 		if (_loop > 0)
@@ -2202,6 +2202,10 @@ void Player::releaseParts()
 		}
 	}
 
+	for (auto&& i : _parts)
+	{
+		SS_SAFE_DELETE(i);
+	}
 	_parts.clear();
 }
 
@@ -2240,7 +2244,7 @@ void Player::setPartsParentage()
 		if (refanimeName != "")
 		{
 			//インスタンスパーツが設定されている
-			sprite->_ssplayer = ss::Player::create();
+			sprite->_ssplayer = ss::Player::create(_resman);
 			sprite->_ssplayer->_playercontrol = this->_playercontrol;
 			sprite->_ssplayer->setMaskFuncFlag(false);
 			sprite->_ssplayer->setMaskParentSetting(partData->maskInfluence);
