@@ -107,8 +107,7 @@ void SSPlayerControl::setPosition(float x, float y)
 {
 	Sprite::setPosition(x, y);
 
-	cocos2d::Mat4 mat = getNodeToWorldTransform();
-	_ssp->setParentMatrix(mat.m, true);
+	update(0);	//プレイヤー内部の座標を更新するために経過時間0で更新を行う
 }
 
 //sprite のオーバーライドここまで
