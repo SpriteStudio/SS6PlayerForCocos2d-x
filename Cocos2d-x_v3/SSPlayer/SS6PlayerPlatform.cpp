@@ -20,7 +20,6 @@ namespace ss
 	int _direction;
 	int _window_w;
 	int _window_h;
-    bool _isContentScaleFactorAuto;
 
 	#define OPENGLES20	(1)	//Opengl 2.0で動作するコードにする場合は1
 
@@ -33,7 +32,6 @@ namespace ss
 		_direction = PLUS_UP;
 		_window_w = 1280;
 		_window_h = 720;
-        _isContentScaleFactorAuto = true;
 	}
 	//アプリケーション終了時の処理
 	void SSPlatformRelese(void)
@@ -66,27 +64,89 @@ namespace ss
 		window_h = _window_h;
 	}
 
-    //cocos2d-xのコンテンツスケールに合わせてUVを補正する
-    void SSSetPlusDirection(bool flag)
-    {
-        _isContentScaleFactorAuto = flag;
-    }
+	/**
+	* Zipファイルかを判定する
+	*/
+	bool isZipFile(const char* pszZipFileName)
+	{
+		bool rc = false;
+
+		//ファイルを開いてヘッダを確認する
+		std::string fullpath = cocos2d::FileUtils::getInstance()->fullPathForFilename(pszZipFileName);
+		ssize_t nSize = 0;
+		unsigned char* loadData = cocos2d::FileUtils::getInstance()->getFileData(fullpath, "rb", &nSize);
+		if (loadData == nullptr)
+		{
+			std::string msg = "Can't load data > " + fullpath;
+			CCASSERT(loadData != nullptr, msg.c_str());
+		}
+		else
+		{
+			//読み込めた場合ヘッダを見てZIPかを判定する
+			if (
+				 ( loadData[0] == 0x50 )
+			  && ( loadData[1] == 0x4B )
+			  && ( loadData[2] == 0x03 )
+			  && ( loadData[3] == 0x04 )
+				)
+			{
+				rc = true;
+			}
+
+			delete[] loadData;
+		}
+
+		return(rc);
+	}
 
 	/**
 	* ファイル読み込み
 	*/
-	unsigned char* SSFileOpen(const char* pszFileName, const char* pszMode, unsigned long * pSize)
+	unsigned char* SSFileOpen(const char* pszFileName, const char* pszMode, unsigned long * pSize, const char *pszZipFileName)
 	{
-        std::string fullpath = cocos2d::FileUtils::getInstance()->fullPathForFilename(pszFileName);
-        
-        ssize_t nSize = 0;
-        void* loadData = cocos2d::FileUtils::getInstance()->getFileData(fullpath, pszMode, &nSize);
-        if (loadData == nullptr)
-        {
-            std::string msg = "Can't load project data > " + fullpath;
-            CCASSERT(loadData != nullptr, msg.c_str());
-        }
-        *pSize = (long)nSize;
+		ssize_t nSize = 0;
+		void* loadData = NULL;
+
+		if (strcmp(pszZipFileName,"") != 0 )
+		{
+			//Zipファイルのパスが指定されている
+			if (isZipFile(pszZipFileName) == true)
+			{
+				//ヘッダのチェックOK
+				//Zipファイルの読込み
+				std::string fullpath = cocos2d::FileUtils::getInstance()->fullPathForFilename(pszZipFileName);
+				cocos2d::Data zipdata = std::move(cocos2d::FileUtils::getInstance()->getDataFromFile(fullpath));
+				cocos2d::ZipFile* zipfile = cocos2d::ZipFile::createWithBuffer(zipdata.getBytes(), zipdata.getSize());
+				//Zip内のファイルリストを取得
+				//Zip内のファイル名はzipファイル名/含まれるファイル名になる
+				for (std::string filename = zipfile->getFirstFilename(); !filename.empty(); filename = zipfile->getNextFilename())
+				{
+					if (filename.compare(std::string(pszFileName)) == 0)
+					{
+						// 一致しているファイルがあった
+						ssize_t filesize;
+						loadData = zipfile->getFileData(filename, &filesize);
+						break;
+					}
+				}
+				delete zipfile;
+			}
+		}
+		else
+		{
+			//直接ファイルを読む
+			std::string fullpath = cocos2d::FileUtils::getInstance()->fullPathForFilename(pszFileName);
+
+			loadData = cocos2d::FileUtils::getInstance()->getFileData(fullpath, pszMode, &nSize);
+			*pSize = (long)nSize;
+		}
+
+		if (loadData == nullptr)
+		{
+			std::string msg = "Can't load project data > " + std::string(pszFileName);
+			CCASSERT(loadData != nullptr, msg.c_str());
+		}
+
 
 		return (unsigned char *)loadData;
 	}
@@ -94,7 +154,7 @@ namespace ss
 	/**
 	* テクスチャの読み込み
 	*/
-	long SSTextureLoad(const char* pszFileName, int  wrapmode, int filtermode)
+	long SSTextureLoad(const char* pszFileName, int  wrapmode, int filtermode, const char *pszZipFileName)
 	{
 		/**
 		* テクスチャ管理用のユニークな値を返してください。
@@ -116,10 +176,48 @@ namespace ss
 				//読み込み処理
 				cocos2d::TextureCache* texCache = cocos2d::Director::getInstance()->getTextureCache();
 				cocos2d::CCImage::setPNGPremultipliedAlphaEnabled(false);	//ストーレートアルファで読み込む
-				cocos2d::Texture2D* tex = texCache->addImage(pszFileName);
+				cocos2d::Texture2D* tex = NULL;
+
+				if (strcmp(pszZipFileName, "") != 0)
+				{
+					//Zipファイルのパスが指定されている
+					if (isZipFile(pszZipFileName) == true)
+					{
+						//Zipファイルの読込み
+						std::string fullpath = cocos2d::FileUtils::getInstance()->fullPathForFilename(pszZipFileName);
+						cocos2d::Data zipdata = std::move(cocos2d::FileUtils::getInstance()->getDataFromFile(fullpath));
+						cocos2d::ZipFile* zipfile = cocos2d::ZipFile::createWithBuffer(zipdata.getBytes(), zipdata.getSize());
+						//Zip内のファイルリストを取得
+						for (std::string filename = zipfile->getFirstFilename(); !filename.empty(); filename = zipfile->getNextFilename())
+						{
+							if (filename.compare(std::string(pszFileName)) == 0)
+							{
+								// 一致しているファイルがあった
+								ssize_t filesize;
+								unsigned char *loadData = zipfile->getFileData(filename, &filesize);
+
+								cocos2d::Image* image = nullptr;
+								image = new (std::nothrow) cocos2d::Image();
+								bool bRet = image->initWithImageData(loadData, filesize);
+								if (bRet)
+								{
+									tex = texCache->addImage(image, pszFileName);
+								}
+								free(loadData);
+								break;
+							}
+						}
+
+						delete zipfile;
+					}
+				}
+				else
+				{
+					//パスからファイルを読む
+					tex = texCache->addImage(pszFileName);
+				}
+
 				cocos2d::CCImage::setPNGPremultipliedAlphaEnabled(true);	//ステータスを戻しておく
-
-
 				texture[texture_index] = tex;
 				if (!texture[texture_index]) {
 					DEBUG_PRINTF("テクスチャの読み込み失敗\n");
