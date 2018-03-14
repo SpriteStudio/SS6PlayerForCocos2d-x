@@ -596,12 +596,17 @@ namespace ss
 				cocos2d::GL::blendFunc(GL_SRC_ALPHA, GL_ONE);
 				break;
 			case BLEND_SUB:		///< 3 減算
+/*
 				glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
 #if OPENGLES20
 				glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ZERO, GL_DST_ALPHA);
 #else
 				glBlendFuncSeparateEXT(GL_SRC_ALPHA, GL_ONE, GL_ZERO, GL_DST_ALPHA);
 #endif
+*/
+				//https://github.com/SpriteStudio/SS6PlayerForCocos2d-x/issues/13
+				//cocos2d::GL::blendFuncを経由する都合上、減算は再現されない
+				cocos2d::GL::blendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
 				break;
 			case BLEND_MULALPHA:	///< 4 α乗算
 //				glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
@@ -636,6 +641,7 @@ namespace ss
 			_ssDrawState.partsColorType = state.partsColorType;
 			_ssDrawState.partsColorUse = (int)ispartColor;
 			_ssDrawState.maskInfluence = (int)sprite->_maskInfluence;
+
 			return;
 		}
 
@@ -739,6 +745,7 @@ namespace ss
 		_ssDrawState.partsColorType = state.partsColorType;
 		_ssDrawState.partsColorUse = (int)ispartColor;
 		_ssDrawState.maskInfluence = (int)sprite->_maskInfluence;
+
 }
 
 

@@ -599,6 +599,7 @@ void	SsEffectRenderV2::drawSprite(
 	}
 
 	//UVを設定する
+/*
 	int atlasWidth = state.texture.size_w;
 	int atlasHeight = state.texture.size_h;
 	float left, right, top, bottom;
@@ -615,6 +616,15 @@ void	SsEffectRenderV2::drawSprite(
 	state.quad.bl.texCoords.v = bottom;
 	state.quad.br.texCoords.u = right;
 	state.quad.br.texCoords.v = bottom;
+*/
+	state.quad.tl.texCoords.u = dispCell->refCell.u1;
+	state.quad.tl.texCoords.v = dispCell->refCell.v1;
+	state.quad.tr.texCoords.u = dispCell->refCell.u2;
+	state.quad.tr.texCoords.v = dispCell->refCell.v1;
+	state.quad.bl.texCoords.u = dispCell->refCell.u1;
+	state.quad.bl.texCoords.v = dispCell->refCell.v2;
+	state.quad.br.texCoords.u = dispCell->refCell.u2;
+	state.quad.br.texCoords.v = dispCell->refCell.v2;
 
 	//ブレンドタイプを設定
 	if (dispCell->blendType == SsRenderBlendType::Mix)

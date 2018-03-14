@@ -38,6 +38,7 @@ SSPlayerControl::~SSPlayerControl()
 	if (_ssp)
 	{
 		delete (_ssp);
+		_ssp = nullptr;
 	}
 }
 
@@ -87,6 +88,11 @@ void SSPlayerControl::update(float dt)
 
 void SSPlayerControl::onDraw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transform, uint32_t flags)
 {
+	//アップデートを行わずにDrawされた場合（RenderTextuer等）もあるので親ノードのマトリクスを設定する
+	cocos2d::Mat4 mat = getNodeToWorldTransform();
+	_ssp->setParentMatrix(mat.m, true);
+
+	//プレイヤーの描画
 	this->getGLProgram()->use();
 	_ssp->draw();
 }
@@ -818,6 +824,10 @@ protected:
 					behavior.refCell.cellIndex = behavior.CellIndex;
 					std::string name = static_cast<const char*>(ptr(cellRef->cell->name));
 					behavior.refCell.cellName = name;
+					behavior.refCell.u1 = cellRef->cell->u1;
+					behavior.refCell.v1 = cellRef->cell->v1;
+					behavior.refCell.u2 = cellRef->cell->u2;
+					behavior.refCell.v2 = cellRef->cell->v2;
 
 				}
 				//				behavior.CellName;
@@ -1678,14 +1688,14 @@ Player::Player(void)
 	, _motionBlendPlayer(nullptr)
 	, _blendTime(0.0f)
 	, _blendTimeMax(0.0f)
-	,_startFrameOverWrite(-1)	//開始フレームの上書き設定
-	,_endFrameOverWrite(-1)		//終了フレームの上書き設定
+	, _startFrameOverWrite(-1)	//開始フレームの上書き設定
+	, _endFrameOverWrite(-1)		//終了フレームの上書き設定
 	, _seedOffset(0)
-	,_maskFuncFlag(true)
-	,_maskParentSetting(true)
-	,_parentMatUse(false)					//プレイヤーが持つ継承されたマトリクスがあるか？
-	,_userDataCallback(nullptr)
-	,_playEndCallback(nullptr)
+	, _maskFuncFlag(true)
+	, _maskParentSetting(true)
+	, _parentMatUse(false)					//プレイヤーが持つ継承されたマトリクスがあるか？
+	, _userDataCallback(nullptr)
+	, _playEndCallback(nullptr)
 	, _playercontrol(nullptr)
 {
 	int i;
@@ -1713,6 +1723,11 @@ Player::~Player()
 	releaseData();
 	releaseResourceManager();
 	releaseAnime();
+
+	_resman = nullptr;
+	_currentRs = nullptr;
+	_currentAnimeRef = nullptr;
+	_playercontrol = nullptr;
 }
 
 Player* Player::create(ResourceManager* resman)
@@ -2754,6 +2769,13 @@ void Player::setParentMatrix(float* mat, bool use )
 {
 	memcpy(_parentMat, mat, sizeof(float) * 16);	//
 	_parentMatUse = use;					//プレイヤーが持つ継承されたマトリクスがあるか？
+
+	if (_parentMatUse == true)
+	{
+		//プレイヤーが持つ継承されたマトリクスがある場合はこの時点でステータスを更新しておく
+		memcpy(_state.mat, _parentMat, sizeof(float) * 16);
+	}
+
 }
 
 void Player::setFrame(int frameNo, float dt)

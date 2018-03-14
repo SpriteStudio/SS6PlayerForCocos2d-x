@@ -18,11 +18,19 @@ struct SsCell
 	std::string texname;
 	int			cellIndex;
 	std::string cellName;
+	float		u1;
+	float		v1;
+	float		u2;
+	float		v2;
 
 	SsCell():
 		  pivot_X(0)
 		, pivot_Y(0)
 		, cellIndex(-1)
+		, u1(0)
+		, v1(0)
+		, u2(0)
+		, v2(0)
 	{}
 };
 
