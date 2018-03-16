@@ -14,6 +14,7 @@ namespace ss
 	//テクスチャ管理クラス
 	#define TEXTURE_MAX (512)				//全プレイヤーで使えるのテクスチャ枚数
 	cocos2d::Texture2D* texture[TEXTURE_MAX];		//テクスチャ情報の保持
+	std::string textureKey[TEXTURE_MAX];			//テクスチャキャッシュに登録するキー
 	int texture_index = 0;					//手k数茶情報の参照ポインタ
 
 	//座標系設定
@@ -27,6 +28,11 @@ namespace ss
 	void SSPlatformInit(void)
 	{
 		memset(texture, 0, sizeof(texture));
+		int i;
+		for (i = 0; i < TEXTURE_MAX; i++)
+		{
+			textureKey[i] = "";
+		}
 		texture_index = 0;
 
 		_direction = PLUS_UP;
@@ -179,6 +185,8 @@ namespace ss
 				}
 				else
 				{
+					textureKey[texture_index] = pszFileName;	//登録したテクスチャのキーを保存する
+
 					//SpriteStudioで設定されたテクスチャ設定を反映させるための分岐です。
 					cocos2d::Texture2D::TexParams texParams;
 					switch (wrapmode)
@@ -247,11 +255,24 @@ namespace ss
 		/// 解放後も同じ番号で何度も解放処理が呼ばれるので、例外が出ないように作成してください。
 		bool rc = true;
 
+		//参照するハンドルがある
 		if (texture[handle])
 		{
 			cocos2d::TextureCache* texCache = cocos2d::Director::getInstance()->getTextureCache();
-			texCache->removeTexture(texture[handle]);
+
+			//テクスチャは登録されている
+			//同じテクスチャを参照している場合があるので、キーを元に判断する
+			cocos2d::Texture2D* tex = texCache->getTextureForKey(textureKey[handle]);	//テクスチャキャッシュにテクスチャがあるか参照する
+			if ( tex )
+			{
+				//該当するキーのテクスチャがキャッシュされている
+				//テクスチャの削除
+				texCache->removeTexture(texture[handle]);
+			}
+
+			//登録情報の削除
 			texture[handle] = 0;
+			textureKey[handle] = "";
 		}
 		else
 		{
