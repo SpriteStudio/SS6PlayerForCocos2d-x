@@ -11,11 +11,11 @@
 namespace ss
 {
 
-	//テクスチャ管理クラス
-	#define TEXTURE_MAX (512)				//全プレイヤーで使えるのテクスチャ枚数
-	cocos2d::Texture2D* texture[TEXTURE_MAX];		//テクスチャ情報の保持
-	std::string textureKey[TEXTURE_MAX];			//テクスチャキャッシュに登録するキー
-	int texture_index = 0;					//手k数茶情報の参照ポインタ
+	//セルマップの参照するテクスチャ割り当て管理用バッファ
+	#define TEXTURE_MAX (512)						//全プレイヤーで使えるのセルマップの枚数
+	cocos2d::Texture2D* texture[TEXTURE_MAX];		//セルマップの参照するテクスチャ情報の保持
+	std::string textureKey[TEXTURE_MAX];			//セルマップの参照するテクスチャキャッシュに登録するキー
+	int texture_index = 0;							//セルマップの参照ポインタ
 
 	//座標系設定
 	int _direction;
