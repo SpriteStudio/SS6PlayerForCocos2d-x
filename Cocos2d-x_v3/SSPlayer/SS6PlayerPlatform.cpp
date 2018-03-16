@@ -17,6 +17,9 @@ namespace ss
 	std::string textureKey[TEXTURE_MAX];			//セルマップの参照するテクスチャキャッシュに登録するキー
 	int texture_index = 0;							//セルマップの参照ポインタ
 
+	//レンダリング用ブレンドファンクションを使用するかフラグ
+	static bool enableRenderingBlendFunc = false;
+
 	//座標系設定
 	int _direction;
 	int _window_w;
@@ -38,6 +41,8 @@ namespace ss
 		_direction = PLUS_UP;
 		_window_w = 1280;
 		_window_h = 720;
+
+		enableRenderingBlendFunc = false;
 	}
 	//アプリケーション終了時の処理
 	void SSPlatformRelese(void)
@@ -68,6 +73,17 @@ namespace ss
 		direction = _direction;
 		window_w = _window_w;
 		window_h = _window_h;
+	}
+
+	/**
+	* レンダリング用のブレンドファンクションを使用する.
+	* レンダリングターゲットとアルファ値がブレンドされてしまうためカラー値のみのレンダリングファンクションにする
+	*
+	* @param  flg	      通常描画:false、レンダリング描画:true
+	*/
+	void SSRenderingBlendFuncEnable(int flg)
+	{
+		enableRenderingBlendFunc = flg;
 	}
 
 	/**
@@ -360,6 +376,10 @@ namespace ss
 #endif
 		//ブレンドモード　減算時の設定を戻す
 		glBlendEquation(GL_FUNC_ADD);
+		//ブレンドファンクションを通常に戻しcocosにも通知する
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		cocos2d::GL::blendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 #if OPENGLES20
 #else
 		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
@@ -655,49 +675,107 @@ namespace ss
 		if (_ssDrawState.partBlendfunc != state.blendfunc)
 		{
 			glBlendEquation(GL_FUNC_ADD);
-			switch (state.blendfunc)
+			if (enableRenderingBlendFunc == false)
 			{
-			case BLEND_MIX:		///< 0 ブレンド（ミックス）
-//				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-				cocos2d::GL::blendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-				break;
-			case BLEND_MUL:		///< 1 乗算
-//				glBlendFunc(GL_ZERO, GL_SRC_COLOR);
-				cocos2d::GL::blendFunc(GL_ZERO, GL_SRC_COLOR);
-				break;
-			case BLEND_ADD:		///< 2 加算
-//				glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-				cocos2d::GL::blendFunc(GL_SRC_ALPHA, GL_ONE);
-				break;
-			case BLEND_SUB:		///< 3 減算
-/*
-				glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
+				//通常の描画
+				switch (state.blendfunc)
+				{
+				case BLEND_MIX:		///< 0 ブレンド（ミックス）
+					glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+					break;
+				case BLEND_MUL:		///< 1 乗算
+					glBlendFunc(GL_ZERO, GL_SRC_COLOR);
+					break;
+				case BLEND_ADD:		///< 2 加算
+					glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+					break;
+				case BLEND_SUB:		///< 3 減算
+
+					glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
 #if OPENGLES20
-				glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ZERO, GL_DST_ALPHA);
+					glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ZERO, GL_DST_ALPHA);
 #else
-				glBlendFuncSeparateEXT(GL_SRC_ALPHA, GL_ONE, GL_ZERO, GL_DST_ALPHA);
+					glBlendFuncSeparateEXT(GL_SRC_ALPHA, GL_ONE, GL_ZERO, GL_DST_ALPHA);
 #endif
-*/
-				//https://github.com/SpriteStudio/SS6PlayerForCocos2d-x/issues/13
-				//cocos2d::GL::blendFuncを経由する都合上、減算は再現されない
-				cocos2d::GL::blendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
-				break;
-			case BLEND_MULALPHA:	///< 4 α乗算
-//				glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
-				cocos2d::GL::blendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
-				break;
-			case BLEND_SCREEN:		///< 5 スクリーン
-//				glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ONE);
-				cocos2d::GL::blendFunc(GL_ONE_MINUS_DST_COLOR, GL_ONE);
-				break;
-			case BLEND_EXCLUSION:	///< 6 除外
-//				glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ONE_MINUS_SRC_COLOR);
-				cocos2d::GL::blendFunc(GL_ONE_MINUS_DST_COLOR, GL_ONE_MINUS_SRC_COLOR);
-				break;
-			case BLEND_INVERT:		///< 7 反転
-//				glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ZERO);
-				cocos2d::GL::blendFunc(GL_ONE_MINUS_DST_COLOR, GL_ZERO);
-				break;
+					break;
+				case BLEND_MULALPHA:	///< 4 α乗算
+					glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
+					break;
+				case BLEND_SCREEN:		///< 5 スクリーン
+					glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ONE);
+					break;
+				case BLEND_EXCLUSION:	///< 6 除外
+					glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ONE_MINUS_SRC_COLOR);
+					break;
+				case BLEND_INVERT:		///< 7 反転
+					glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ZERO);
+					break;
+				}
+			}
+			else
+			{
+				//レンダリング用の描画
+				switch (state.blendfunc)
+				{
+				case BLEND_MIX:		///< 0 ブレンド（ミックス）
+#if OPENGLES20
+					glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+#else
+					glBlendFuncSeparateEXT(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+#endif
+					break;
+				case BLEND_MUL:		///< 1 乗算
+#if OPENGLES20
+					glBlendFuncSeparate(GL_ZERO, GL_SRC_COLOR, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+#else
+					glBlendFuncSeparateEXT(GL_ZERO, GL_SRC_COLOR, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+#endif
+					break;
+				case BLEND_ADD:		///< 2 加算
+#if OPENGLES20
+					glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+#else
+					glBlendFuncSeparateEXT(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+#endif
+					break;
+				case BLEND_SUB:		///< 3 減算
+
+					glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
+#if OPENGLES20
+					glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ZERO, GL_ONE_MINUS_SRC_ALPHA);
+#else
+					glBlendFuncSeparateEXT(GL_SRC_ALPHA, GL_ONE, GL_ZERO, GL_ONE_MINUS_SRC_ALPHA);
+#endif
+					break;
+				case BLEND_MULALPHA:	///< 4 α乗算
+#if OPENGLES20
+					glBlendFuncSeparate(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+#else
+					glBlendFuncSeparateEXT(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+#endif
+					break;
+				case BLEND_SCREEN:		///< 5 スクリーン
+#if OPENGLES20
+					glBlendFuncSeparate(GL_ONE_MINUS_DST_COLOR, GL_ONE, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+#else
+					glBlendFuncSeparateEXT(GL_ONE_MINUS_DST_COLOR, GL_ONE, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+#endif
+					break;
+				case BLEND_EXCLUSION:	///< 6 除外
+#if OPENGLES20
+					glBlendFuncSeparate(GL_ONE_MINUS_DST_COLOR, GL_ONE_MINUS_SRC_COLOR, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+#else
+					glBlendFuncSeparateEXT(GL_ONE_MINUS_DST_COLOR, GL_ONE_MINUS_SRC_COLOR, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+#endif
+					break;
+				case BLEND_INVERT:		///< 7 反転
+#if OPENGLES20
+					glBlendFuncSeparate(GL_ONE_MINUS_DST_COLOR, GL_ZERO, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+#else
+					glBlendFuncSeparateEXT(GL_ONE_MINUS_DST_COLOR, GL_ZERO, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+#endif
+					break;
+				}
 			}
 		}
 

@@ -1,5 +1,5 @@
 ﻿//-----------------------------------------------------------
-// SS6Player for Cocos2d-x v1.3.6
+// SS6Player for Cocos2d-x v1.3.7
 //
 // Copyright(C) Web Technology Corp.
 // http://www.webtech.co.jp/
@@ -175,6 +175,22 @@ public:
 	*/
 	Player *getSSPInstance();
 
+	/**
+	* RenderTextureに描画する場合にレンダリング用のブレンドファンクションを使用します.
+	* レンダリングターゲットとアルファ値がブレンドされてしまうためカラー値のみのレンダリングファンクションを使用します。
+	*
+	* //使用例
+	* auto rt = RenderTexture::create(1280, 720);
+	* rt->begin();
+	* ssplayer->renderingBlendFuncEnable(true);	//レンダリング用ブレンドファンクションを使用する
+	* ssplayer->visit();
+	* ssplayer->renderingBlendFuncEnable(false);
+	* rt->end();
+	*
+	* @param  flg	      通常描画:false、レンダリング描画:true
+	*/
+	void renderingBlendFuncEnable(int flg) { _enableRenderingBlendFunc = flg; };
+
 public:
 	SSPlayerControl();
 	~SSPlayerControl();
@@ -186,6 +202,7 @@ public:
 	virtual void setPosition(float x, float y);
 
 	void onDraw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transform, uint32_t flags);
+	void onRenderingDraw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transform, uint32_t flags);
 	void initCustomShaderProgram( );
 
 	static cocos2d::GLProgram*	_defaultShaderProgram;
@@ -205,7 +222,10 @@ public:
 private:
 	Player *_ssp;
 	cocos2d::CustomCommand _customCommand;
+	cocos2d::CustomCommand _customCommandRendering;
 
+	cocos2d::Vec2 _position;		//プレイヤーのポジション
+	bool _enableRenderingBlendFunc;	//レンダリング用のブレンドステートを使用する
 };
 
 /**

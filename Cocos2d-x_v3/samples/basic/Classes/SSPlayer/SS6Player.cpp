@@ -32,6 +32,8 @@ std::map<int, int> SSPlayerControl::_SUB_uniform_map;
 SSPlayerControl::SSPlayerControl()
 {
 	_ssp = nullptr;
+	_position = cocos2d::Vec2(0,0);	//プレイヤーのポジション
+	_enableRenderingBlendFunc = false;
 }
 SSPlayerControl::~SSPlayerControl()
 {
@@ -86,6 +88,14 @@ void SSPlayerControl::update(float dt)
 	_ssp->update(dt);
 }
 
+void SSPlayerControl::onRenderingDraw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transform, uint32_t flags)
+{
+	//レンダリング描画
+	SSRenderingBlendFuncEnable(true);
+	onDraw(renderer, transform, flags);
+	SSRenderingBlendFuncEnable(false);
+}
+
 void SSPlayerControl::onDraw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transform, uint32_t flags)
 {
 	//アップデートを行わずにDrawされた場合（RenderTextuer等）もあるので親ノードのマトリクスを設定する
@@ -99,9 +109,20 @@ void SSPlayerControl::onDraw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &t
 
 void SSPlayerControl::draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transform, uint32_t flags)
 {
-	_customCommand.init(_globalZOrder, transform, flags);
-	_customCommand.func = CC_CALLBACK_0(SSPlayerControl::onDraw, this, renderer, transform, flags);
-	renderer->addCommand(&_customCommand);
+	if (_enableRenderingBlendFunc == false)
+	{
+		//通常描画
+		_customCommand.init(_globalZOrder, transform, flags);
+		_customCommand.func = CC_CALLBACK_0(SSPlayerControl::onDraw, this, renderer, transform, flags);
+		renderer->addCommand(&_customCommand);
+	}
+	else
+	{
+		//レンダリング用描画
+		_customCommandRendering.init(_globalZOrder, transform, flags);
+		_customCommandRendering.func = CC_CALLBACK_0(SSPlayerControl::onRenderingDraw, this, renderer, transform, flags);
+		renderer->addCommand(&_customCommandRendering);
+	}
 }
 
 /// ポジションセットをオ－バーライドしてプレイヤーの位置を更新する
@@ -113,7 +134,13 @@ void SSPlayerControl::setPosition(float x, float y)
 {
 	Sprite::setPosition(x, y);
 
-	update(0);	//プレイヤー内部の座標を更新するために経過時間0で更新を行う
+	if ((_position.x != x) || (_position.y != y))
+	{
+		//座標が更新された場合のみ行う
+		update(0);	//プレイヤー内部の座標を更新するために経過時間0で更新を行う
+	}
+	_position.x = x;
+	_position.y = y;
 }
 
 //sprite のオーバーライドここまで
