@@ -17,11 +17,11 @@ namespace ss
 	extern void SSPlatformRelese(void);
 	extern void SSSetPlusDirection(int direction, int window_w, int window_h);
 	extern void SSGetPlusDirection(int &direction, int &window_w, int &window_h);
-    extern void SSSetPlusDirection(bool flag);
 	extern void SSRenderingBlendFuncEnable(int flg);
 	extern unsigned char* SSFileOpen(const char* pszFileName, const char* pszMode, unsigned long * pSize, const char * pszZipFileName);
 	extern long SSTextureLoad(const char* pszFileName, int  wrapmode, int filtermode, const char *pszZipFileName);
 	extern bool SSTextureRelese(long handle);
+	extern bool SSGetTextureIndex(std::string  key, std::vector<int> *indexList);
 	extern bool isAbsolutePath(const std::string& strPath);
 	extern void SSRenderSetup(void);
 	extern void SSRenderEnd(void);

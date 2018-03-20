@@ -138,6 +138,7 @@ namespace ss
 		* テクスチャにアクセスするハンドルや、テクスチャを割り当てたバッファ番号等になります。
 		*
 		* プレイヤーはここで返した値とパーツのステータスを引数に描画を行います。
+		* ResourceManager::changeTextureを使用する場合はSSTextureLoadから取得したインデックスを設定してください。
 		*/
 		long rc = 0;
 
@@ -240,20 +241,17 @@ namespace ss
 				}
 				exit = false;	//ループ終わり
 			}
-			else
-			{
-				if (texture_index == start_index)
-				{
-					//一周したバッファが開いてない
-					DEBUG_PRINTF("テクスチャバッファの空きがない\n");
-					exit = false;	//ループ終わり
-				}
-			}
 			//次のインデックスに移動する
 			texture_index++;
 			if (texture_index >= TEXTURE_MAX)
 			{
 				texture_index = 0;
+			}
+			if (texture_index == start_index)
+			{
+				//一周したバッファが開いてない
+				DEBUG_PRINTF("テクスチャバッファの空きがない\n");
+				exit = false;	//ループ終わり
 			}
 		}
 
@@ -296,6 +294,32 @@ namespace ss
 		}
 
 		return rc ;
+	}
+
+	/**
+	* 画像ファイル名から読み込まれているテクスチャバッファのインデックスを取得する
+	* keyはResourcesフォルダからの画像ファイルまでのパスになります。
+	*
+	* 使用されていない場合はfalseになります。
+	*/
+	bool SSGetTextureIndex(std::string  key, std::vector<int> *indexList)
+	{
+		bool rc = false;
+
+		indexList->clear();
+
+		int i;
+		for ( i = 0; i < TEXTURE_MAX; i++ )
+		{
+			if (textureKey[i] == key)
+			{
+				indexList->push_back(i);
+				rc = true;
+			}
+		}
+
+
+		return (rc);
 	}
 
 	/**

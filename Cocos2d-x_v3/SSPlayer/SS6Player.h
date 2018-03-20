@@ -1,5 +1,5 @@
 ﻿//-----------------------------------------------------------
-// SS6Player for Cocos2d-x v1.3.7
+// SS6Player for Cocos2d-x v1.3.8
 //
 // Copyright(C) Web Technology Corp.
 // http://www.webtech.co.jp/
@@ -664,10 +664,13 @@ public:
 		
 	/**
 	* 指定したセルのテクスチャを変更します.
+	* SSTextureLoadで差し替える画像を読み込み、取得したインデックスを設定してください。
+	*
 	* @param  ssbpName       ssbp名（拡張子を除くファイル名）
 	* @param  ssceName       ssce名（拡張子を除くファイル名）
 	* @param  texture        変更後のテクスチャハンドル
 	* @return 変更を行ったか
+	*
 	*/
 	bool changeTexture(char* ssbpName, char* ssceName, long texture);
 
