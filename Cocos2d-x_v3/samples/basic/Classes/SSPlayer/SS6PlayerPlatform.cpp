@@ -234,8 +234,6 @@ namespace ss
 					}
 					tex->setTexParameters(texParams);
 
-
-
 					isLoad = true;
 					rc = texture_index;	//テクスチャハンドルをリソースマネージャに設定する
 				}

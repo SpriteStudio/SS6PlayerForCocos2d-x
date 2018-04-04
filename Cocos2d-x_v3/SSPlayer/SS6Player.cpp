@@ -2678,7 +2678,7 @@ void Player::setPartCell(std::string partsname, std::string sscename, std::strin
 			if (strcmp(partName, partsname.c_str()) == 0)
 			{
 				//セル番号を設定
-				_cellChange[index] = changeCellIndex;	//上書き解除
+				_cellChange[partIndex] = changeCellIndex;	//上書き解除
 				break;
 			}
 		}
@@ -2925,10 +2925,10 @@ void Player::setFrame(int frameNo, float dt)
 			//ユーザーが任意に非表示としたパーツは非表示に設定
 			isVisibled = false;
 		}
-		if (_cellChange[index] != -1)
+		if (_cellChange[partIndex] != -1)
 		{
 			//ユーザーがセルを上書きした
-			cellIndex = _cellChange[index];
+			cellIndex = _cellChange[partIndex];
 			CellRef* cellRef = cellIndex >= 0 ? _currentRs->cellCache->getReference(cellIndex) : nullptr;
 			if (cellRef)
 			{
