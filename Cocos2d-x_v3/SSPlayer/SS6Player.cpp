@@ -2628,7 +2628,7 @@ void Player::setPartVisible(std::string partsname, bool flg)
 			const char* partName = static_cast<const char*>(ptr(partData->name));
 			if (strcmp(partName, partsname.c_str()) == 0)
 			{
-				_partVisible[index] = flg;
+				_partVisible[partIndex] = flg;
 				break;
 			}
 		}
@@ -2920,7 +2920,7 @@ void Player::setFrame(int frameNo, float dt)
 
 		bool isVisibled = !(flags & PART_FLAG_INVISIBLE);
 
-		if (_partVisible[index] == false)
+		if (_partVisible[partIndex] == false)
 		{
 			//ユーザーが任意に非表示としたパーツは非表示に設定
 			isVisibled = false;

@@ -238,9 +238,9 @@ struct State
 	int flags;						/// このフレームで更新が行われるステータスのフラグ
 	int flags2;						/// このフレームで更新が行われるステータスのフラグ2
 	int cellIndex;					/// パーツに割り当てられたセルの番号
-	float x;						/// SS5アトリビュート：X座標
-	float y;						/// SS5アトリビュート：Y座標
-	float z;						/// SS5アトリビュート：Z座標
+	float x;						/// SSアトリビュート：X座標
+	float y;						/// SSアトリビュート：Y座標
+	float z;						/// SSアトリビュート：Z座標
 	float pivotX;					/// 原点Xオフセット＋セルに設定された原点オフセットX
 	float pivotY;					/// 原点Yオフセット＋セルに設定された原点オフセットY
 	float rotationX;				/// X回転
@@ -252,16 +252,16 @@ struct State
 	float localscaleY;				/// Yローカルスケール
 	int opacity;					/// 不透明度（0～255）
 	int localopacity;				/// ローカル不透明度（0～255）
-	float size_X;					/// SS5アトリビュート：Xサイズ
-	float size_Y;					/// SS5アトリビュート：Xサイズ
-	float uv_move_X;				/// SS5アトリビュート：UV X移動
-	float uv_move_Y;				/// SS5アトリビュート：UV Y移動
-	float uv_rotation;				/// SS5アトリビュート：UV 回転
-	float uv_scale_X;				/// SS5アトリビュート：UV Xスケール
-	float uv_scale_Y;				/// SS5アトリビュート：UV Yスケール
-	float boundingRadius;			/// SS5アトリビュート：当たり半径
-	int partsColorFunc;				/// SS5アトリビュート：パーツカラーのブレンド方法
-	int partsColorType;				/// SS5アトリビュート：パーツカラーの単色か頂点カラーか。
+	float size_X;					/// SSアトリビュート：Xサイズ
+	float size_Y;					/// SSアトリビュート：Xサイズ
+	float uv_move_X;				/// SSアトリビュート：UV X移動
+	float uv_move_Y;				/// SSアトリビュート：UV Y移動
+	float uv_rotation;				/// SSアトリビュート：UV 回転
+	float uv_scale_X;				/// SSアトリビュート：UV Xスケール
+	float uv_scale_Y;				/// SSアトリビュート：UV Yスケール
+	float boundingRadius;			/// SSアトリビュート：当たり半径
+	int partsColorFunc;				/// SSアトリビュート：パーツカラーのブレンド方法
+	int partsColorType;				/// SSアトリビュート：パーツカラーの単色か頂点カラーか。
 	int masklimen;					/// マスク強度
 	int priority;					/// 優先度
 	bool flipX;						/// 横反転（親子関係計算済）
@@ -798,9 +798,9 @@ struct ResluteState
 {
 	int flags;						/// このフレームで更新が行われるステータスのフラグ
 	int cellIndex;					/// パーツに割り当てられたセルの番号
-	float x;						/// SS5アトリビュート：X座標
-	float y;						/// SS5アトリビュート：Y座標
-	float z;						/// SS5アトリビュート：Z座標
+	float x;						/// SSアトリビュート：X座標
+	float y;						/// SSアトリビュート：Y座標
+	float z;						/// SSアトリビュート：Z座標
 	float pivotX;					/// 原点Xオフセット＋セルに設定された原点オフセットX
 	float pivotY;					/// 原点Yオフセット＋セルに設定された原点オフセットY
 	float rotationX;				/// X回転（親子関係計算済）
@@ -1291,7 +1291,7 @@ public:
 
 	/**
 	* パーツ名からパーツの表示、非表示を設定します.
-	* コリジョン用のパーツや差し替えグラフィック等、SS5上で表示を行うがゲーム中では非表示にする場合に使用します。
+	* コリジョン用のパーツや差し替えグラフィック等、SS上で表示を行うがゲーム中では非表示にする場合に使用します。
 	* SSの非表示アトリビュート設定するわけではないので注意してください。
 	*/
 	void setPartVisible(std::string partsname, bool flg);
