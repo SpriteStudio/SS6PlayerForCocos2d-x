@@ -3692,9 +3692,11 @@ void Player::setFrame(int frameNo, float dt)
 		const PartData* partData = &parts[partIndex];
 		CustomSprite* sprite = static_cast<CustomSprite*>(_parts.at(partIndex));
 
+
 		//インスタンスパーツのアップデート
 		if (sprite->_ssplayer)
 		{
+			sprite->_ssplayer->setMaskFunctionUse(_maskEnable);	//マスクの有無を設定する
 			sprite->_ssplayer->update(dt);
 		}
 		//エフェクトのアップデート
