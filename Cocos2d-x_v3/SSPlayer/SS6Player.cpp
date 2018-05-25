@@ -1733,6 +1733,7 @@ Player::Player(void)
 	, _userDataCallback(nullptr)
 	, _playEndCallback(nullptr)
 	, _playercontrol(nullptr)
+	, _maskEnable(true)
 {
 	int i;
 	for (i = 0; i < PART_VISIBLE_MAX; i++)
@@ -3772,6 +3773,10 @@ void Player::draw()
 	if (_maskFuncFlag == true) //マスク機能が有効（インスタンスのソースアニメではない）
 	{
 		SSRenderSetup();
+		if (getMaskFunctionUse() == true)
+		{
+			clearMask();	//マスクの状態を初期化する
+		}
 	}
 
 	ToPointer ptr(_currentRs->data);
@@ -3820,7 +3825,7 @@ void Player::draw()
 				}
 				else if (sprite->_partData.type == PARTTYPE_MASK)
 				{
-					if (_maskFuncFlag == true) //マスク機能が有効（インスタンスのソースアニメではない）
+					if ((_maskFuncFlag == true) && (getMaskFunctionUse() == true)) //マスク機能が有効（インスタンスのソースアニメではない）
 					{
 						clearMask();
 						mask_index++;	//0番は処理しないので先にインクメントする
@@ -3849,7 +3854,10 @@ void Player::draw()
 	}
 	if (_maskFuncFlag == true) //マスク機能が有効（インスタンスのソースアニメではない）
 	{
-		enableMask(false);
+		if (getMaskFunctionUse() == true)
+		{
+			enableMask(false);
+		}
 		SSRenderEnd();
 	}
 
@@ -3970,6 +3978,12 @@ void  Player::setFlip(bool flipX, bool flipY)
 	_state.flipX = flipX;
 	_state.flipY = flipY;
 }
+
+void  Player::setMaskFunctionUse(bool flg)
+{
+	_maskEnable = flg;
+}
+
 
 //割合に応じた中間値を取得します
 float Player::parcentVal(float val1, float val2, float parcent)

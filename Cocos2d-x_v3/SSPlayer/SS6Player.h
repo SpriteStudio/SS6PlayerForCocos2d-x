@@ -1,5 +1,5 @@
 ﻿//-----------------------------------------------------------
-// SS6Player for Cocos2d-x v1.3.10
+// SS6Player for Cocos2d-x v1.3.11
 //
 // Copyright(C) Web Technology Corp.
 // http://www.webtech.co.jp/
@@ -1412,7 +1412,17 @@ public:
 	/*
 	* プレイヤー本体の反転を設定します。
 	*/
-	void  setFlip(bool flipX, bool flipY);
+	void setFlip(bool flipX, bool flipY);
+
+	/*
+	* プレイヤーのマスク機能の有効、無効を設定します。
+	* SpriteStudioのマスクはステンシルバッファを使用して実現しています。
+	* そのためパーツの描画でステンシルマスクを設定しており、プレイヤー以外でステンシルマスクを使用する際に
+	* ステンシルマスクの設定が上書きされプレイヤーの描画が意図しない結果になる場合があります。
+	* 無効（false）にする事でプレイヤーのマスクに関する処理を行いようにし、ほかのマスク処理に影響されるようになります。
+	* 無効場合はアニメーションに含まれるマスクパーツは作用しませんのでご注意ください。
+	*/
+	void setMaskFunctionUse(bool flg);
 
 	/*
 	* パーツ番号に対応したスプライト情報を取得します。
@@ -1499,6 +1509,7 @@ public:
 	void draw();
 
 	State getState(void);
+	bool getMaskFunctionUse(void) { return _maskEnable; };
 
 	SSPlayerControl*	_playercontrol;
 
@@ -1559,6 +1570,7 @@ protected:
 	bool				_parentMatUse;					//プレイヤーが持つ継承されたマトリクスがあるか？
 	bool				_maskParentSetting;				//親パーツのマスク対象（インスタンスのみ使用する）
 	bool				_maskFuncFlag;					//マスク機能を有効にするか？（インスタンスのソースアニメはマスクが無効になる）
+	bool				_maskEnable;					//マスク機能を無効にするか？
 
 	std::vector<CustomSprite *> _maskIndexList;			//マスク対象となるパーツ
 

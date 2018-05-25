@@ -368,6 +368,7 @@ namespace ss
 	SSDrawState _ssDrawState;
 
 	//各プレイヤーの描画を行う前の初期化処理
+	GLboolean _currentStencilEnabled = GL_FALSE;
 	void SSRenderSetup( void )
 	{
 #if OPENGLES20
@@ -380,6 +381,8 @@ namespace ss
 
 		glEnable(GL_BLEND);
 		glDisable(GL_DEPTH_TEST);
+
+		_currentStencilEnabled = glIsEnabled(GL_STENCIL_TEST);
 #if OPENGLES20
 #else
 		glEnable(GL_ALPHA_TEST);
@@ -405,6 +408,10 @@ namespace ss
 		//ブレンドファンクションを通常に戻しcocosにも通知する
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		cocos2d::GL::blendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		if (!_currentStencilEnabled)
+		{
+			glDisable(GL_STENCIL_TEST);
+		}
 
 #if OPENGLES20
 #else
@@ -640,7 +647,10 @@ namespace ss
 			return;
 		}
 
-		execMask(sprite);	//マスク初期化
+		if (sprite->_parentPlayer->getMaskFunctionUse() == true )
+		{
+			execMask(sprite);	//マスク初期化
+		}
 
 		/**
 		* OpenGLの3D機能を使用してスプライトを表示します。
@@ -862,7 +872,7 @@ namespace ss
 				auto glprogram = sprite->_playercontrol->getGLProgram();	//
 				glprogram->setUniformsForBuiltins();
 				//マトリクスを設定
-				glUniformMatrix4fv(SSPlayerControl::_MIXONE_uniform_map[(int)WVP], 1, 0, (float *)&matrixMVP.m);
+				glUniformMatrix4fv(SSPlayerControl::_MASK_uniform_map[(int)WVP], 1, 0, (float *)&matrixMVP.m);
 				// テクスチャサンプラ情報をシェーダーに送る  
 				glUniform1i(SSPlayerControl::_MASK_uniform_map[SAMPLER], 0);
 				glUniform1f(SSPlayerControl::_MASK_uniform_map[RATE], mask_alpha);
