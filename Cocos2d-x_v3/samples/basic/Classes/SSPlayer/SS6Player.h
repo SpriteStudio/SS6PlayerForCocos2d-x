@@ -1,5 +1,5 @@
 ﻿//-----------------------------------------------------------
-// SS6Player for Cocos2d-x v1.3.11
+// SS6Player for Cocos2d-x v1.4.0
 //
 // Copyright(C) Web Technology Corp.
 // http://www.webtech.co.jp/
@@ -10,7 +10,7 @@
 
 
 /************************************************************
-対応するssbpフォーマットはバージョン8です。
+対応するssbpフォーマットはバージョン9です。
 Ss6ConverterのフォーマットバージョンはSpriteStudio6-SDKを参照してください。
 https://github.com/SpriteStudio/SpriteStudio6-SDK
 

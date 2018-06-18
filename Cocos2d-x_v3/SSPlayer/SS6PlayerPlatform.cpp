@@ -662,8 +662,8 @@ namespace ss
 		quad = state.quad;
 
 		//原点補正
-		float cx = ((state.size_X) * -(state.pivotX - 0.5f));
-		float cy = ((state.size_Y) * +(state.pivotY - 0.5f));
+		float cx = state.size_X * -state.pivotX;
+		float cy = state.size_Y * -state.pivotY;
 
 		quad.tl.vertices.x += cx;
 		quad.tl.vertices.y += cy;

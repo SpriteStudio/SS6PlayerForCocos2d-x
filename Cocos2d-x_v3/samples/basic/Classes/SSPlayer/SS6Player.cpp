@@ -409,7 +409,7 @@ void SSPlayerControl::initCustomShaderProgram( )
  */
 
 static const ss_u32 DATA_ID = 0x42505353;
-static const ss_u32 DATA_VERSION = 8;
+static const ss_u32 DATA_VERSION = 9;
 
 
 /**
@@ -2968,8 +2968,6 @@ void Player::setFrame(int frameNo, float dt)
 			pivotY += cpy;
 
 		}
-		pivotX += 0.5f;
-		pivotY += 0.5f;
 
 		//モーションブレンド
 		if (_motionBlendPlayer)
