@@ -210,11 +210,13 @@ precision lowp float;
 varying vec4 v_fragmentColor;
 varying vec2 v_texCoord;
 
+uniform float u_rate;
+
 void main()
 {
 	vec4 pixel = texture2D(CC_Texture0, v_texCoord);
     gl_FragColor.rgb = ( v_fragmentColor.rgb * v_fragmentColor.a ) + ( pixel.rgb * ( 1.0 - v_fragmentColor.a ) );
-    gl_FragColor.a = pixel.a;
+    gl_FragColor.a = pixel.a * u_rate;
 }
 )";
 const char* ssMULPositionTextureColor_frag = R"(
@@ -332,6 +334,7 @@ void SSPlayerControl::initCustomShaderProgram( )
 		// 頂点に付加する情報のロケーションを取得  
 		SSPlayerControl::_MIXVERT_uniform_map[WVP] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_MVP_MATRIX);
 		SSPlayerControl::_MIXVERT_uniform_map[SAMPLER] = glGetUniformLocation(p->getProgram(), GLProgram::UNIFORM_NAME_SAMPLER0);
+		SSPlayerControl::_MIXVERT_uniform_map[RATE] = glGetUniformLocation(p->getProgram(), "u_rate");
 
 		SSPlayerControl::_partColorMIXVERTShaderProgram = p;
 	}
@@ -409,7 +412,7 @@ void SSPlayerControl::initCustomShaderProgram( )
  */
 
 static const ss_u32 DATA_ID = 0x42505353;
-static const ss_u32 DATA_VERSION = 9;
+static const ss_u32 DATA_VERSION = 10;
 
 
 /**
@@ -3807,6 +3810,31 @@ void Player::draw()
 		//スプライトの表示
 		CustomSprite* sprite = static_cast<CustomSprite*>(_parts.at(partIndex));
 
+		if (sprite->_partData.type == PARTTYPE_MASK)
+		{
+			//マスクパーツ
+
+			//6.2対応
+			//非表示の場合でもマスクの場合は処理をしなくてはならない
+			//マスクはパーツの描画より先に奥のマスクパーツから順にマスクを作成していく必要があるため
+			//通常パーツの描画順と同じ箇所で非表示によるスキップを行うとマスクのバッファがクリアされずに、
+			//マスクが手前の優先度に影響するようになってしまう。
+			if ((_maskFuncFlag == true) && (getMaskFunctionUse() == true)) //マスク機能が有効（インスタンスのソースアニメではない）
+			{
+				clearMask();
+				mask_index++;	//0番は処理しないので先にインクメントする
+
+				for (size_t i = mask_index; i < _maskIndexList.size(); i++)
+				{
+					CustomSprite* sprite2 = _maskIndexList[i];
+					if (sprite2->_state.isVisibled == true)
+					{
+						SSDrawSprite(sprite2);
+						_draw_count++;
+					}
+				}
+			}
+		}
 		if (sprite->_state.isVisibled == true)
 		{
 			if (sprite->_ssplayer)
@@ -3823,26 +3851,9 @@ void Player::draw()
 					sprite->refEffect->draw();
 					_draw_count = sprite->refEffect->getDrawSpriteCount();
 				}
-				else if (sprite->_partData.type == PARTTYPE_MASK)
+				else if (sprite->_partData.type != PARTTYPE_MASK) 
 				{
-					if ((_maskFuncFlag == true) && (getMaskFunctionUse() == true)) //マスク機能が有効（インスタンスのソースアニメではない）
-					{
-						clearMask();
-						mask_index++;	//0番は処理しないので先にインクメントする
-
-						for (size_t i = mask_index; i < _maskIndexList.size(); i++)
-						{
-							CustomSprite* sprite2 = _maskIndexList[i];
-							if (sprite2->_state.isVisibled == true)
-							{
-								SSDrawSprite(sprite2);
-								_draw_count++;
-							}
-						}
-					}
-				}
-				else
-				{
+					//通常パーツ
 					if (sprite->_state.texture.handle != -1)
 					{
 						SSDrawSprite(sprite);

@@ -450,7 +450,7 @@ namespace ss
 	ミックスのみコンスタント値を使う。
 	他は事前に頂点カラーに対してブレンド率を掛けておく事でαも含めてブレンドに対応している。
 	*/
-	void setupPartsColorTextureCombiner(SSPlayerControl* pc, BlendType blendType, VertexFlag colorBlendTarget, SSPARTCOLOR_RATE rate)
+	void setupPartsColorTextureCombiner(SSPlayerControl* pc, BlendType blendType, VertexFlag colorBlendTarget, float rate)
 	{
 		const auto& matrixP = cocos2d::Director::getInstance()->getMatrix(cocos2d::MATRIX_STACK_TYPE::MATRIX_STACK_PROJECTION);
 		cocos2d::Mat4 matrixMVP = matrixP;
@@ -471,7 +471,7 @@ namespace ss
 				glUniformMatrix4fv(SSPlayerControl::_MIXONE_uniform_map[(int)WVP], 1, 0, (float *)&matrixMVP.m);
 				// テクスチャサンプラ情報をシェーダーに送る  
 				glUniform1i(SSPlayerControl::_MIXONE_uniform_map[SAMPLER], 0);
-				glUniform1f(SSPlayerControl::_MIXONE_uniform_map[RATE], rate.oneRate);
+				glUniform1f(SSPlayerControl::_MIXONE_uniform_map[RATE], rate);
 			}
 			else
 			{
@@ -484,6 +484,7 @@ namespace ss
 				glUniformMatrix4fv(SSPlayerControl::_MIXVERT_uniform_map[WVP], 1, 0, (float *)&matrixMVP.m);
 				// テクスチャサンプラ情報をシェーダーに送る  
 				glUniform1i(SSPlayerControl::_MIXVERT_uniform_map[SAMPLER], 0);
+				glUniform1f(SSPlayerControl::_MIXVERT_uniform_map[RATE], rate);
 			}
 			break;
 		case BlendType::BLEND_MUL:
@@ -561,7 +562,7 @@ namespace ss
 		{
 			if (state.flags & PART_FLAG_PARTS_COLOR)
 			{
-				setupPartsColorTextureCombiner(sprite->_playercontrol, (BlendType)state.partsColorFunc, (VertexFlag)state.partsColorType, state.rate);
+				setupPartsColorTextureCombiner(sprite->_playercontrol, (BlendType)state.partsColorFunc, (VertexFlag)state.partsColorType, state.rate.oneRate);
 			}
 			else
 			{
@@ -710,10 +711,23 @@ namespace ss
 			alpha = state.localopacity / 255.0f;	//ローカル不透明度対応
 		}
 
-		quad.tl.colors.a = quad.tl.colors.a * alpha;
-		quad.tr.colors.a = quad.tr.colors.a * alpha;
-		quad.bl.colors.a = quad.bl.colors.a * alpha;
-		quad.br.colors.a = quad.br.colors.a * alpha;
+		if (
+			   (state.flags & PART_FLAG_PARTS_COLOR)
+			&& ((VertexFlag)state.partsColorType != VertexFlag::VERTEX_FLAG_ONE)
+			&& ((BlendType)state.partsColorFunc == BlendType::BLEND_MIX)
+			)
+		{
+			//ver6.2 パーツカラー対応
+			//パーツカラー、頂点、MIXを選択した場合は不透明度を適用しない
+			//ミックスの場合、Rate として扱われるので不透明度を掛けてはいけない
+		}
+		else
+		{
+			quad.tl.colors.a = quad.tl.colors.a * alpha;
+			quad.tr.colors.a = quad.tr.colors.a * alpha;
+			quad.bl.colors.a = quad.bl.colors.a * alpha;
+			quad.br.colors.a = quad.br.colors.a * alpha;
+		}
 
 		//テクスチャ有効
 		int	gl_target = GL_TEXTURE_2D;
@@ -839,9 +853,9 @@ namespace ss
 			}
 		}
 
-		//メッシュの場合描画
 		bool ispartColor = (state.flags & PART_FLAG_PARTS_COLOR);
 
+		//メッシュの場合描画
 		if (sprite->_partData.type == PARTTYPE_MESH)
 		{
 			SSDrawMesh(sprite, state);
@@ -880,6 +894,7 @@ namespace ss
 		}
 		else
 		{
+			//パーツカラーの適用
 //			if (
 //				 (_ssDrawState.partsColorFunc != state.partsColorFunc)
 //			  || (_ssDrawState.partsColorType != state.partsColorType)
@@ -890,7 +905,17 @@ namespace ss
 				//パーツカラーの反映
 				if (state.flags & PART_FLAG_PARTS_COLOR)
 				{
-					setupPartsColorTextureCombiner(sprite->_playercontrol, (BlendType)state.partsColorFunc, (VertexFlag)state.partsColorType, state.rate );
+					//パーツカラーの反映
+					if ((VertexFlag)state.partsColorType == VertexFlag::VERTEX_FLAG_ONE)
+					{
+						//単色
+						setupPartsColorTextureCombiner(sprite->_playercontrol, (BlendType)state.partsColorFunc, (VertexFlag)state.partsColorType, state.rate.oneRate);
+					}
+					else
+					{
+						//頂点
+						setupPartsColorTextureCombiner(sprite->_playercontrol, (BlendType)state.partsColorFunc, (VertexFlag)state.partsColorType, alpha);
+					}
 				}
 				else
 				{
