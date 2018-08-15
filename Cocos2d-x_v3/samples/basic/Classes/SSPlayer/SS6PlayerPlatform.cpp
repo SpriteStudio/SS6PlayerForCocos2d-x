@@ -949,16 +949,6 @@ namespace ss
 			setClientState(quad.bl, 2, uvs, colors, vertices);
 			setClientState(quad.br, 3, uvs, colors, vertices);
 
-			// UV 配列を指定する
-			glEnableClientState(GL_VERTEX_ARRAY);
-			glTexCoordPointer(2, GL_FLOAT, 0, (GLvoid *)uvs);
-			// カラー配列を指定する
-			glEnableClientState(GL_COLOR_ARRAY);
-			glColorPointer(4, GL_FLOAT, 0, (GLvoid *)colors);
-			// 頂点バッファの設定
-			glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-			glVertexPointer(3, GL_FLOAT, 0, (GLvoid *)vertices);
-
 			//頂点変形、パーツカラーを使用した場合は中心に頂点を作成し4つのポリゴンに分割して描画を行う。
 			//頂点の算出
 			SsVector2	vertexCoordinateLU = SsVector2(quad.tl.vertices.x, quad.tl.vertices.y);// : 左上頂点座標（ピクセル座標系）
