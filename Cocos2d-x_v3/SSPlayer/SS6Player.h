@@ -123,7 +123,7 @@ extern void get_uv_rotation(float *u, float *v, float cu, float cv, float deg);
 #define SS_SAFE_RETAIN(p)            do { if(p) { (p)->retain(); } } while(0)
 #define SS_BREAK_IF(cond)            if(cond) break
 
-#ifdef _DEBUG
+#ifdef COCOS2D_DEBUG
 	#define SSLOG(...)       do {} while (0)
 	#define SS_ASSERT(cond)    assert(cond)
 	#define SS_ASSERT2(cond, msg) SS_ASSERT(cond)

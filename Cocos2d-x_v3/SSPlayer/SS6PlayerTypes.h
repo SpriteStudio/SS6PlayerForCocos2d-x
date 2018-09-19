@@ -15,7 +15,7 @@ class SSSize;
 class SSPoint;
 
 
-#ifdef _DEBUG
+#ifdef COCOS2D_DEBUG
 	#define SSLOG(...)       do {} while (0)
 	#define SS_ASSERT(cond)    assert(cond)
 	#define SS_ASSERT2(cond, msg) SS_ASSERT(cond)
