@@ -1960,6 +1960,15 @@ void Player::play(const std::string& animeName, int loop, int startFrameNo)
 {
 	SS_ASSERT2(_currentRs != NULL, "Not select data");
 
+	//アニメデータを変更した場合は変更したステータスをもどす
+	int i;
+	for (i = 0; i < PART_VISIBLE_MAX; i++)
+	{
+		_partVisible[i] = true;
+		_partIndex[i] = -1;
+		_cellChange[i] = -1;
+	}
+
 	AnimeRef* animeRef = _currentRs->animeCache->getReference(animeName);
 	if (animeRef == NULL)
 	{
