@@ -20,9 +20,9 @@ namespace ss
 class SsEffectModel;
 class SsRenderEffectBase;
 class SsEffectNode;
-class SsPartState;
+struct SsPartState;
 class SsEffectRenderAtom;
-class SsCell;
+struct SsCell;
 class CustomSprite;
 
 

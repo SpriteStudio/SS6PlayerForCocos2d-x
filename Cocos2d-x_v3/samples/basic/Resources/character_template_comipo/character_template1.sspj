@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<SpriteStudioProject version="2.00.00">
+<SpriteStudioProject version="2.00.01">
 	<name>character_template1</name>
 	<exportPath></exportPath>
 	<settings>
@@ -54,21 +54,20 @@
 			<item>ROTZ</item>
 			<item>SCLX</item>
 			<item>SCLY</item>
+			<item>LSCX</item>
+			<item>LSCY</item>
 			<item>ALPH</item>
+			<item>LALP</item>
 			<item>PRIO</item>
-			<item>FLPH</item>
-			<item>FLPV</item>
+			<item>IFLH</item>
+			<item>IFLV</item>
 			<item>HIDE</item>
-			<item>VCOL</item>
+			<item>PCOL</item>
 			<item>VERT</item>
 			<item>PVTX</item>
 			<item>PVTY</item>
-			<item>ANCX</item>
-			<item>ANCY</item>
 			<item>SIZX</item>
 			<item>SIZY</item>
-			<item>IFLH</item>
-			<item>IFLV</item>
 			<item>UVTX</item>
 			<item>UVTY</item>
 			<item>UVRZ</item>
@@ -112,6 +111,7 @@
 		<convertImageToPMA>0</convertImageToPMA>
 		<blendImageAsPMA>0</blendImageAsPMA>
 		<unpremultiplyAlpha>0</unpremultiplyAlpha>
+		<vertexAnimeFloat>0</vertexAnimeFloat>
 	</settings>
 	<animeSettings>
 		<fps>30</fps>
@@ -125,6 +125,22 @@
 		<ik_depth>3</ik_depth>
 		<startFrame>0</startFrame>
 		<endFrame>10</endFrame>
+		<bgSettings>
+			<value>
+				<imagePath></imagePath>
+				<imageDisp>1</imageDisp>
+				<imageOffset>0 0</imageOffset>
+				<imageCanvas>0 0</imageCanvas>
+				<imagePivot>0 0</imagePivot>
+			</value>
+			<value>
+				<imagePath></imagePath>
+				<imageDisp>1</imageDisp>
+				<imageOffset>0 0</imageOffset>
+				<imageCanvas>0 0</imageCanvas>
+				<imagePivot>0 0</imagePivot>
+			</value>
+		</bgSettings>
 		<outStartNum>0</outStartNum>
 	</animeSettings>
 	<texPackSettings>
@@ -143,9 +159,13 @@
 		<value>character_template_3head.ssae</value>
 	</animepackNames>
 	<lastAnimeFile>character_template_3head.ssae</lastAnimeFile>
-	<lastAnimeName>pose1</lastAnimeName>
-	<lastCellMapFile>character_2head.ssce</lastCellMapFile>
-	<lastCell>body</lastCell>
+	<lastAnimeName>Setup</lastAnimeName>
 	<lastPart>root</lastPart>
-	<setupmode>0</setupmode>
+	<lastCellMapFile>character_3head.ssce</lastCellMapFile>
+	<lastCell>head</lastCell>
+	<lastEffectFile></lastEffectFile>
+	<setupmode>1</setupmode>
+	<expandAnimation>
+		<value>character_template_2head.ssae</value>
+	</expandAnimation>
 </SpriteStudioProject>

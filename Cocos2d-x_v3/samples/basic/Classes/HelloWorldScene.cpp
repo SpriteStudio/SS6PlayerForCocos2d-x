@@ -96,8 +96,8 @@ bool HelloWorld::init()
 
 	//•\Ž¦ˆÊ’u‚ðÝ’è
 	Size size = cocos2d::Director::getInstance()->getWinSize();
-	ssplayer->setPosition(size.width / 2, size.height / 2);
-	ssplayer->setScale(1.0f, 1.0f);
+	ssplayer->setPosition(size.width / 2, size.height / 4);
+	ssplayer->setScale(0.5f, 0.5f);
 	ssplayer->setRotation(0);
 	ssplayer->setOpacity(255);
 	ssplayer->getSSPInstance()->setColor(255, 255, 255);
@@ -215,7 +215,7 @@ void HelloWorld::onKeyPressed(EventKeyboard::KeyCode keyCode, Event* event)
 		else if (keyCode == cocos2d::EventKeyboard::KeyCode::KEY_RIGHT_ARROW)
 		{
 			playindex++;
-			if (playindex >= animename.size())
+			if (playindex >= (int)animename.size())
 			{
 				playindex = 0;
 			}
