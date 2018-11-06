@@ -412,7 +412,7 @@ void SSPlayerControl::initCustomShaderProgram( )
  */
 
 static const ss_u32 DATA_ID = 0x42505353;
-static const ss_u32 DATA_VERSION = 10;
+static const ss_u32 DATA_VERSION = 11;
 
 
 /**
@@ -1541,11 +1541,11 @@ std::string ResourceManager::addDataWithKey(const std::string& dataKey, const st
 	if (imageBaseDir == s_null)
 	{
 		// imageBaseDirの指定がないとき
-		if (data->imageBaseDir)
+		ToPointer ptr(data);
+		std::string dir = static_cast<const char*>(ptr(data->imageBaseDir));
+		if (dir != "")
 		{
 			// コンバート時に指定されたパスを使用する
-			ToPointer ptr(data);
-			const char* dir = static_cast<const char*>(ptr(data->imageBaseDir));
 			baseDir = dir;
 		}
 		else
