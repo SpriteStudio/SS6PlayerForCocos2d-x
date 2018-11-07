@@ -602,7 +602,7 @@ struct SsVertexAnime
 
 
 class ISSTexture;
-struct SsCell;
+class SsCell;
 
 
 

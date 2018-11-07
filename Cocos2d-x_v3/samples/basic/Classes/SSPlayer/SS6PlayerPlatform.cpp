@@ -583,7 +583,7 @@ namespace ss
 
 		MultiplyMatrix(pls.mat, mat, mat);
 
-		for (int i = 0; i < sprite->_meshVertexSize; i++)
+		for (size_t i = 0; i < sprite->_meshVertexSize; i++)
 		{
 			sprite->_mesh_colors[i * 4 + 0] = setcol[0];
 			sprite->_mesh_colors[i * 4 + 1] = setcol[1];

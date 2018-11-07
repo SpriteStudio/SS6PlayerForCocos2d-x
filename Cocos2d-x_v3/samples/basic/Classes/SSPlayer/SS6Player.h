@@ -94,10 +94,10 @@ namespace ss
 class ResourceManager;
 class CustomSprite;
 class CellCache;
-struct CellRef;
+class CellRef;
 class AnimeCache;
-struct AnimeRef;
-struct ResourceSet;
+class AnimeRef;
+class ResourceSet;
 struct ProjectData;
 class SSSize;
 class Player;
