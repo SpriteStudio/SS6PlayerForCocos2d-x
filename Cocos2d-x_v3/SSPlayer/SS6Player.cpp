@@ -2899,6 +2899,7 @@ void Player::setFrame(int frameNo, float dt)
 		}
 		float scaleX			= flags & PART_FLAG_SCALE_X ? reader.readFloat() : init->scaleX;
 		float scaleY			= flags & PART_FLAG_SCALE_Y ? reader.readFloat() : init->scaleY;
+
 		float localscaleX		= flags & PART_FLAG_LOCALSCALE_X ? reader.readFloat() : init->localscaleX;
 		float localscaleY		= flags & PART_FLAG_LOCALSCALE_Y ? reader.readFloat() : init->localscaleY;
 		int opacity				= flags & PART_FLAG_OPACITY ? reader.readU16() : init->opacity;
@@ -2932,6 +2933,9 @@ void Player::setFrame(int frameNo, float dt)
 		bool flipY = (bool)(flags & PART_FLAG_FLIP_V);
 
 		bool isVisibled = !(flags & PART_FLAG_INVISIBLE);
+
+		if (scaleX == 0 || scaleY == 0 || localscaleX == 0 || localscaleY==0 ) isVisibled = false;
+		
 
 		if (_partVisible[partIndex] == false)
 		{
