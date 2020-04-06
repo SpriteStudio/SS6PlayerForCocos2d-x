@@ -2089,6 +2089,12 @@ void Player::updateFrame(float dt)
 	}
 	SS_ASSERT2(startFrame <= endFrame, "Playframe is out of range.");
 
+	// Setup を指定すると範囲外参照でクラッシュする対策 2020/04/06 endo
+	if (endFrame + 1 > getTotalFrame())
+	{
+		endFrame = getTotalFrame() - 1;
+	}
+
 	bool playEnd = false;
 	bool toNextFrame = _isPlaying && !_isPausing;
 	if (toNextFrame && (_loop == 0 || _loopCount < _loop))
