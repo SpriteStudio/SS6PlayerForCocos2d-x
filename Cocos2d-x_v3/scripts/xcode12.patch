@@ -1,0 +1,83 @@
+diff --git a/build/cocos2d_libs.xcodeproj/project.pbxproj b/build/cocos2d_libs.xcodeproj/project.pbxproj
+index 1ce8967397..a1372633e1 100644
+--- a/build/cocos2d_libs.xcodeproj/project.pbxproj
++++ b/build/cocos2d_libs.xcodeproj/project.pbxproj
+@@ -13662,7 +13662,7 @@
+ 				GCC_WARN_UNUSED_FUNCTION = YES;
+ 				GCC_WARN_UNUSED_VARIABLE = YES;
+ 				HEADER_SEARCH_PATHS = "";
+-				MACOSX_DEPLOYMENT_TARGET = 10.7;
++				MACOSX_DEPLOYMENT_TARGET = 10.15;
+ 				ONLY_ACTIVE_ARCH = YES;
+ 				PRODUCT_NAME = "$(TARGET_NAME)";
+ 				SDKROOT = macosx;
+@@ -13713,7 +13713,7 @@
+ 				GCC_WARN_UNUSED_FUNCTION = YES;
+ 				GCC_WARN_UNUSED_VARIABLE = YES;
+ 				HEADER_SEARCH_PATHS = "";
+-				MACOSX_DEPLOYMENT_TARGET = 10.7;
++				MACOSX_DEPLOYMENT_TARGET = 10.15;
+ 				PRODUCT_NAME = "$(TARGET_NAME)";
+ 				SDKROOT = macosx;
+ 				SKIP_INSTALL = YES;
+diff --git a/cocos/audio/mac/CDAudioManager.m b/cocos/audio/mac/CDAudioManager.m
+index ced152e4e9..cf74bc36f4 100644
+--- a/cocos/audio/mac/CDAudioManager.m
++++ b/cocos/audio/mac/CDAudioManager.m
+@@ -326,7 +326,7 @@ static BOOL configured = FALSE;
+ -(BOOL) isOtherAudioPlaying {
+     UInt32 isPlaying = 0;
+     UInt32 varSize = sizeof(isPlaying);
+-    AudioSessionGetProperty (kAudioSessionProperty_OtherAudioIsPlaying, &varSize, &isPlaying);
++    CocosAudioSessionGetProperty (kCocosAudioSessionProperty_OtherAudioIsPlaying, &varSize, &isPlaying);
+     return (isPlaying != 0);
+ }
+ 
+@@ -483,8 +483,8 @@ static BOOL configured = FALSE;
+     CFStringRef newAudioRoute;
+     UInt32 propertySize = sizeof (CFStringRef);
+     
+-    AudioSessionGetProperty (
+-                             kAudioSessionProperty_AudioRoute,
++    CocosAudioSessionGetProperty (
++                             kCocosAudioSessionProperty_AudioRoute,
+                              &propertySize,
+                              &newAudioRoute
+                              );
+diff --git a/cocos/audio/mac/CDXMacOSXSupport.h b/cocos/audio/mac/CDXMacOSXSupport.h
+index eaa97f2e34..16694afea3 100644
+--- a/cocos/audio/mac/CDXMacOSXSupport.h
++++ b/cocos/audio/mac/CDXMacOSXSupport.h
+@@ -40,15 +40,15 @@
+ #import <Foundation/Foundation.h>
+ #import <AppKit/NSSound.h>
+ 
+-enum AudioSessionProperties {
+-	kAudioSessionProperty_OtherAudioIsPlaying,
+-	kAudioSessionProperty_AudioRoute	
++enum CocosAudioSessionProperties {
++	kCocosAudioSessionProperty_OtherAudioIsPlaying,
++	kCocosAudioSessionProperty_AudioRoute	
+ };
+ #ifdef __cplusplus
+ extern "C" {
+ #endif	
+ 	
+-extern OSStatus AudioSessionGetProperty(UInt32 inID, UInt32 *ioDataSize, void *outData);    
++extern OSStatus CocosAudioSessionGetProperty(UInt32 inID, UInt32 *ioDataSize, void *outData);    
+ 
+ #ifdef __cplusplus
+ }
+diff --git a/cocos/audio/mac/CDXMacOSXSupport.mm b/cocos/audio/mac/CDXMacOSXSupport.mm
+index 8799eb90df..32a6ca7219 100644
+--- a/cocos/audio/mac/CDXMacOSXSupport.mm
++++ b/cocos/audio/mac/CDXMacOSXSupport.mm
+@@ -37,7 +37,7 @@ NSString *const AVAudioSessionCategoryRecord = @"AVAudioSessionCategoryRecord";
+ NSString *const AVAudioSessionCategoryPlayAndRecord = @"AVAudioSessionCategoryPlayAndRecord";
+ NSString *const AVAudioSessionCategoryAudioProcessing = @"AVAudioSessionCategoryAudioProcessing";
+ 
+-OSStatus AudioSessionGetProperty(UInt32 inID, UInt32 *ioDataSize, void *outData) {
++OSStatus CocosAudioSessionGetProperty(UInt32 inID, UInt32 *ioDataSize, void *outData) {
+ 	//TODO: set outData appropriately
+ 	return 0;
+ }    
