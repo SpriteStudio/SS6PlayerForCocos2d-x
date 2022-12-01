@@ -25,12 +25,13 @@ fi
 ./download-deps.py -r yes
 popd > /dev/null # ${ROOTDIR}/cocos2d
 
-pushd ${BASEDIR} > /dev/null
-# re-create cocos2d-x directory smbolic-link
-/bin/rm -f ./samples/cocos2d
-ln -sfn ${ROOTDIR}/cocos2d ./samples/cocos2d
+pushd ${BASEDIR}/samples
+/bin/rm -f cocos2d*
+/bin/ln -s ../../cocos2d ./cocos2d
 
-# re-create SSPlayer directory symbolic-link to Sample project
-/bin/rm -f ./samples/Classes/SSPlayer
-ln -sfn $(pwd)/SSPlayer ./samples/Classes/SSPlayer
-popd > /dev/null # ${BASEDIR}
+pushd Classes
+/bin/rm -f SSPlayer*
+/bin/ln -s ../../SSPlayer ./SSPlayer
+popd > /dev/null # Classes
+
+popd > /dev/null # ${BASEDIR}/samples
