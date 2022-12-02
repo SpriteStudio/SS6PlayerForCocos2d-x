@@ -10,6 +10,9 @@
     <Filter Include="src">
       <UniqueIdentifier>{bb6c862e-70e9-49d9-81b7-3829a6f50471}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\SSPlayer">
+      <UniqueIdentifier>{77b28a3e-f8b7-4e4c-85d1-7da4467978e0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -21,6 +24,30 @@
     <ClCompile Include="..\Classes\HelloWorldScene.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\Classes\SSPlayer\Common\Animator\ssplayer_effect.cpp">
+      <Filter>src\SSPlayer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\SSPlayer\Common\Animator\ssplayer_effect2.cpp">
+      <Filter>src\SSPlayer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\SSPlayer\Common\Animator\ssplayer_effectfunction.cpp">
+      <Filter>src\SSPlayer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\SSPlayer\Common\Animator\ssplayer_matrix.cpp">
+      <Filter>src\SSPlayer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\SSPlayer\Common\Animator\ssplayer_PartState.cpp">
+      <Filter>src\SSPlayer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\SSPlayer\Common\Helper\DebugPrint.cpp">
+      <Filter>src\SSPlayer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\SSPlayer\SS6Player.cpp">
+      <Filter>src\SSPlayer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\SSPlayer\SS6PlayerPlatform.cpp">
+      <Filter>src\SSPlayer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h">
@@ -31,6 +58,63 @@
     </ClInclude>
     <ClInclude Include="..\Classes\HelloWorldScene.h">
       <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\SSPlayer\Common\Animator\MersenneTwister.h">
+      <Filter>src\SSPlayer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\SSPlayer\Common\Animator\ssplayer_cellmap.h">
+      <Filter>src\SSPlayer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\SSPlayer\Common\Animator\ssplayer_effect.h">
+      <Filter>src\SSPlayer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\SSPlayer\Common\Animator\ssplayer_effect2.h">
+      <Filter>src\SSPlayer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\SSPlayer\Common\Animator\ssplayer_effectfunction.h">
+      <Filter>src\SSPlayer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\SSPlayer\Common\Animator\ssplayer_macro.h">
+      <Filter>src\SSPlayer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\SSPlayer\Common\Animator\ssplayer_matrix.h">
+      <Filter>src\SSPlayer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\SSPlayer\Common\Animator\ssplayer_PartState.h">
+      <Filter>src\SSPlayer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\SSPlayer\Common\Animator\xorshift32.h">
+      <Filter>src\SSPlayer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\SSPlayer\Common\Helper\DebugPrint.h">
+      <Filter>src\SSPlayer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\SSPlayer\Common\Loader\SsEffectBehavior.h">
+      <Filter>src\SSPlayer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\SSPlayer\Common\Loader\SsEffectElement.h">
+      <Filter>src\SSPlayer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\SSPlayer\Common\Loader\ssloader.h">
+      <Filter>src\SSPlayer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\SSPlayer\Common\Loader\ssloader_ssee.h">
+      <Filter>src\SSPlayer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\SSPlayer\Common\Loader\sstypes.h">
+      <Filter>src\SSPlayer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\SSPlayer\SS6Player.h">
+      <Filter>src\SSPlayer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\SSPlayer\SS6PlayerData.h">
+      <Filter>src\SSPlayer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\SSPlayer\SS6PlayerPlatform.h">
+      <Filter>src\SSPlayer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\SSPlayer\SS6PlayerTypes.h">
+      <Filter>src\SSPlayer</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
